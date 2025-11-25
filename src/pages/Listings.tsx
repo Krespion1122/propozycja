@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +9,60 @@ import { Label } from "@/components/ui/label";
 import PropertyCard from "@/components/PropertyCard";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { useListings } from "@/hooks/useListings";
 import property1 from "@/assets/property-1.jpg";
 import property2 from "@/assets/property-2.jpg";
 import property3 from "@/assets/property-3.jpg";
 
 const ListingsPage = () => {
+  const [searchParams] = useSearchParams();
+  const { listings } = useListings();
   const [showFilters, setShowFilters] = useState(false);
-  const [priceRange, setPriceRange] = useState([0, 2000000]);
+  const [priceRange, setPriceRange] = useState([0, 5000000]);
+  const [areaRange, setAreaRange] = useState([0, 500]);
+  const [filters, setFilters] = useState({
+    offerType: searchParams.get('offerType') || '',
+    propertyType: searchParams.get('propertyType') || '',
+    location: searchParams.get('location') || '',
+    bedrooms: '',
+    sortBy: 'newest',
+  });
 
-  const properties = [
+  useEffect(() => {
+    const areaMin = searchParams.get('areaMin');
+    const areaMax = searchParams.get('areaMax');
+    if (areaMin) setAreaRange([parseInt(areaMin), areaRange[1]]);
+    if (areaMax) setAreaRange([areaRange[0], parseInt(areaMax)]);
+  }, [searchParams]);
+
+  const filteredProperties = listings.filter(listing => {
+    if (filters.offerType && listing.offerType !== filters.offerType) return false;
+    if (filters.propertyType && listing.propertyType !== filters.propertyType) return false;
+    if (filters.location && !listing.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
+    if (filters.bedrooms && listing.bedrooms.toString() !== filters.bedrooms) return false;
+    if (listing.price < priceRange[0] || listing.price > priceRange[1]) return false;
+    if (listing.area < areaRange[0] || listing.area > areaRange[1]) return false;
+    return true;
+  }).sort((a, b) => {
+    if (filters.sortBy === 'price-low') return a.price - b.price;
+    if (filters.sortBy === 'price-high') return b.price - a.price;
+    if (filters.sortBy === 'area') return b.area - a.area;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }).map(l => ({
+    id: l.id,
+    title: l.title,
+    location: l.location,
+    price: `${l.price.toLocaleString()} zł${l.offerType === 'wynajem' ? '/mies' : ''}`,
+    image: l.mainImage || property1,
+    bedrooms: l.bedrooms,
+    bathrooms: l.bathrooms,
+    area: l.area,
+    type: l.offerType,
+    featured: l.featured,
+  }));
+
+  // Fallback demo properties
+  const demoProperties = [
     {
       id: "1",
       title: "Luksusowy apartament z widokiem",
@@ -87,6 +133,10 @@ const ListingsPage = () => {
     },
   ];
 
+  const displayProperties = filteredProperties.length > 0 || listings.length > 0 
+    ? filteredProperties 
+    : demoProperties;
+
   return (
     <div className="min-h-screen">
       <Navigation />
@@ -121,13 +171,13 @@ const ListingsPage = () => {
               <div className={`space-y-6 ${showFilters ? "block" : "hidden lg:block"}`}>
                 <div>
                   <Label className="mb-2 block">Typ oferty</Label>
-                  <Select>
+                  <Select value={filters.offerType} onValueChange={(v) => setFilters({...filters, offerType: v === 'all' ? '' : v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Wszystkie" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Wszystkie</SelectItem>
-                      <SelectItem value="sprzedaz">Sprzedaż</SelectItem>
+                      <SelectItem value="sprzedaż">Sprzedaż</SelectItem>
                       <SelectItem value="wynajem">Wynajem</SelectItem>
                     </SelectContent>
                   </Select>
@@ -135,7 +185,7 @@ const ListingsPage = () => {
 
                 <div>
                   <Label className="mb-2 block">Typ nieruchomości</Label>
-                  <Select>
+                  <Select value={filters.propertyType} onValueChange={(v) => setFilters({...filters, propertyType: v === 'all' ? '' : v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Wszystkie" />
                     </SelectTrigger>
@@ -150,7 +200,11 @@ const ListingsPage = () => {
 
                 <div>
                   <Label className="mb-2 block">Lokalizacja</Label>
-                  <Input placeholder="Wpisz lokalizację" />
+                  <Input 
+                    placeholder="Wpisz lokalizację" 
+                    value={filters.location}
+                    onChange={(e) => setFilters({...filters, location: e.target.value})}
+                  />
                 </div>
 
                 <div>
@@ -168,8 +222,22 @@ const ListingsPage = () => {
                 </div>
 
                 <div>
+                  <Label className="mb-4 block">
+                    Powierzchnia: {areaRange[0]} - {areaRange[1]} m²
+                  </Label>
+                  <Slider
+                    value={areaRange}
+                    onValueChange={setAreaRange}
+                    min={0}
+                    max={500}
+                    step={10}
+                    className="mb-2"
+                  />
+                </div>
+
+                <div>
                   <Label className="mb-2 block">Liczba pokoi</Label>
-                  <Select>
+                  <Select value={filters.bedrooms} onValueChange={(v) => setFilters({...filters, bedrooms: v === 'all' ? '' : v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Dowolna" />
                     </SelectTrigger>
@@ -182,16 +250,6 @@ const ListingsPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <Label className="mb-2 block">Powierzchnia min. (m²)</Label>
-                  <Input type="number" placeholder="0" />
-                </div>
-
-                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                  <Search className="w-4 h-4 mr-2" />
-                  Zastosuj filtry
-                </Button>
               </div>
             </div>
           </div>
@@ -200,9 +258,9 @@ const ListingsPage = () => {
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-6">
               <p className="text-muted-foreground">
-                Znaleziono <span className="font-semibold text-foreground">{properties.length}</span> ofert
+                Znaleziono <span className="font-semibold text-foreground">{displayProperties.length}</span> ofert
               </p>
-              <Select>
+              <Select value={filters.sortBy} onValueChange={(v) => setFilters({...filters, sortBy: v})}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Sortuj" />
                 </SelectTrigger>
@@ -216,7 +274,7 @@ const ListingsPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {properties.map((property) => (
+              {displayProperties.map((property) => (
                 <PropertyCard key={property.id} {...property} />
               ))}
             </div>

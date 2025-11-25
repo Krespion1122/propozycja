@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, Home, Award, Users, CheckCircle2, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +6,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PropertyCard from "@/components/PropertyCard";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { useListings } from "@/hooks/useListings";
+import { useState } from "react";
 import heroImage from "@/assets/hero-home.jpg";
 import property1 from "@/assets/property-1.jpg";
 import property2 from "@/assets/property-2.jpg";
 import property3 from "@/assets/property-3.jpg";
 
 const HomePage = () => {
-  const featuredProperties = [
+  const navigate = useNavigate();
+  const { listings } = useListings();
+  const [searchFilters, setSearchFilters] = useState({
+    offerType: '',
+    propertyType: '',
+    location: '',
+    areaMin: '',
+    areaMax: '',
+  });
+
+  const featuredProperties = listings.filter(l => l.featured).slice(0, 3).map(l => ({
+    id: l.id,
+    title: l.title,
+    location: l.location,
+    price: `${l.price.toLocaleString()} zł${l.offerType === 'wynajem' ? '/mies' : ''}`,
+    image: l.mainImage || property1,
+    bedrooms: l.bedrooms,
+    bathrooms: l.bathrooms,
+    area: l.area,
+    type: l.offerType,
+    featured: true,
+  }));
+
+  // Fallback if no listings
+  const displayProperties = featuredProperties.length > 0 ? featuredProperties : [
     {
       id: "1",
       title: "Luksusowy apartament z widokiem",
@@ -51,6 +77,16 @@ const HomePage = () => {
     },
   ];
 
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchFilters.offerType) params.set('offerType', searchFilters.offerType);
+    if (searchFilters.propertyType) params.set('propertyType', searchFilters.propertyType);
+    if (searchFilters.location) params.set('location', searchFilters.location);
+    if (searchFilters.areaMin) params.set('areaMin', searchFilters.areaMin);
+    if (searchFilters.areaMax) params.set('areaMax', searchFilters.areaMax);
+    navigate(`/oferty?${params.toString()}`);
+  };
+
   return (
     <div className="min-h-screen">
       <Navigation />
@@ -78,18 +114,18 @@ const HomePage = () => {
 
             {/* Search Box */}
             <div className="bg-white/95 backdrop-blur-sm p-6 rounded-lg shadow-large">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Select value={searchFilters.offerType} onValueChange={(v) => setSearchFilters({...searchFilters, offerType: v})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Typ oferty" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sprzedaz">Sprzedaż</SelectItem>
+                    <SelectItem value="sprzedaż">Sprzedaż</SelectItem>
                     <SelectItem value="wynajem">Wynajem</SelectItem>
                   </SelectContent>
                 </Select>
 
-                <Select>
+                <Select value={searchFilters.propertyType} onValueChange={(v) => setSearchFilters({...searchFilters, propertyType: v})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Typ nieruchomości" />
                   </SelectTrigger>
@@ -100,9 +136,33 @@ const HomePage = () => {
                   </SelectContent>
                 </Select>
 
-                <Input placeholder="Lokalizacja" className="bg-white" />
+                <Input 
+                  placeholder="Lokalizacja" 
+                  className="bg-white"
+                  value={searchFilters.location}
+                  onChange={(e) => setSearchFilters({...searchFilters, location: e.target.value})}
+                />
 
-                <Button className="bg-accent hover:bg-accent/90 text-accent-foreground w-full">
+                <Input 
+                  type="number" 
+                  placeholder="Metraż od (m²)" 
+                  className="bg-white"
+                  value={searchFilters.areaMin}
+                  onChange={(e) => setSearchFilters({...searchFilters, areaMin: e.target.value})}
+                />
+
+                <Input 
+                  type="number" 
+                  placeholder="Metraż do (m²)" 
+                  className="bg-white"
+                  value={searchFilters.areaMax}
+                  onChange={(e) => setSearchFilters({...searchFilters, areaMax: e.target.value})}
+                />
+
+                <Button 
+                  onClick={handleSearch}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
+                >
                   <Search className="w-4 h-4 mr-2" />
                   Szukaj
                 </Button>
@@ -125,7 +185,7 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            {featuredProperties.map((property) => (
+            {(featuredProperties.length > 0 ? featuredProperties : displayProperties).map((property) => (
               <PropertyCard key={property.id} {...property} />
             ))}
           </div>

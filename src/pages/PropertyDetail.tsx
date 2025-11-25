@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { MapPin, Bed, Bath, Maximize, Calendar, Home, Phone, Mail } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,14 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import ImageLightbox from "@/components/ImageLightbox";
+import { useListings } from "@/hooks/useListings";
 import property1 from "@/assets/property-1.jpg";
 import property2 from "@/assets/property-2.jpg";
 import property3 from "@/assets/property-3.jpg";
 
 const PropertyDetailPage = () => {
   const { id } = useParams();
+  const { listings, loading } = useListings();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const property = {
+  const listing = listings.find(l => l.id === id);
+
+  // Fallback data for demo
+  const property = listing ? {
+    title: listing.title,
+    location: listing.location,
+    price: `${listing.price.toLocaleString()} zł${listing.offerType === 'wynajem' ? '/mies' : ''}`,
+    type: listing.offerType === 'sprzedaż' ? 'Sprzedaż' : 'Wynajem',
+    bedrooms: listing.bedrooms,
+    bathrooms: listing.bathrooms,
+    area: listing.area,
+    year: listing.year,
+    floor: listing.floor || 'N/A',
+    images: listing.images.length > 0 ? listing.images : [property1, property2, property3],
+    description: listing.description,
+    features: listing.features,
+  } : {
     title: "Luksusowy apartament z widokiem na miasto",
     location: "Warszawa, Śródmieście, ul. Marszałkowska 45",
     price: "1 200 000 zł",
@@ -52,25 +74,42 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
 
       <div className="pt-28 pb-12">
         <div className="container mx-auto px-4">
-          {/* Images Gallery */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="md:col-span-2 h-[500px] rounded-lg overflow-hidden">
-              <img
-                src={property.images[0]}
-                alt={property.title}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-            {property.images.slice(1).map((image, index) => (
-              <div key={index} className="h-[300px] rounded-lg overflow-hidden">
-                <img
-                  src={image}
-                  alt={`${property.title} ${index + 2}`}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            ))}
+          {/* Main Image */}
+          <div 
+            className="h-[500px] rounded-lg overflow-hidden mb-4 cursor-pointer"
+            onClick={() => {
+              setLightboxIndex(0);
+              setLightboxOpen(true);
+            }}
+          >
+            <img
+              src={property.images[0]}
+              alt={property.title}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+            />
           </div>
+
+          {/* Image Gallery */}
+          {property.images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-4 mb-8">
+              {property.images.slice(1).map((image, index) => (
+                <div
+                  key={index}
+                  className="flex-shrink-0 w-48 h-32 rounded-lg overflow-hidden cursor-pointer"
+                  onClick={() => {
+                    setLightboxIndex(index + 1);
+                    setLightboxOpen(true);
+                  }}
+                >
+                  <img
+                    src={image}
+                    alt={`${property.title} ${index + 2}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
@@ -210,27 +249,27 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
                   </CardContent>
                 </Card>
 
-                {/* Agent Card */}
+                {/* Company Contact Card */}
                 <Card>
                   <CardContent className="p-6">
-                    <h3 className="font-serif text-xl font-semibold mb-4">Twój agent</h3>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 bg-gray-200 rounded-full" />
-                      <div>
-                        <div className="font-semibold">Anna Kowalska</div>
-                        <div className="text-sm text-muted-foreground">Agent nieruchomości</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-sm">
+                    <h3 className="font-serif text-xl font-semibold mb-4">Skontaktuj się z nami</h3>
+                    <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Phone className="w-4 h-4" />
-                        +48 123 456 789
+                        <a href="tel:+48123456789" className="hover:text-primary">
+                          +48 123 456 789
+                        </a>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail className="w-4 h-4" />
-                        anna.kowalska@premium.pl
+                        <a href="mailto:kontakt@premium.pl" className="hover:text-primary">
+                          kontakt@premium.pl
+                        </a>
                       </div>
                     </div>
+                    <p className="text-sm text-muted-foreground mt-4">
+                      Nasz zespół odpowiada na zapytania w ciągu 24 godzin
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -238,6 +277,16 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
           </div>
         </div>
       </div>
+
+      {lightboxOpen && (
+        <ImageLightbox
+          images={property.images}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+          onNext={() => setLightboxIndex((prev) => Math.min(prev + 1, property.images.length - 1))}
+          onPrevious={() => setLightboxIndex((prev) => Math.max(prev - 1, 0))}
+        />
+      )}
 
       <Footer />
     </div>
