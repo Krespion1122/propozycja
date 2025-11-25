@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Edit, Trash2, GripVertical, Save, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,19 +8,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useListings, Listing } from "@/hooks/useListings";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 const AdminPage = () => {
-  const { listings, addListing, updateListing, deleteListing } = useListings();
+  const { listings, loading, addListing, updateListing, deleteListing, refreshListings } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  
   const [formData, setFormData] = useState<Partial<Listing>>({
     title: '',
     description: '',
     price: 0,
     location: '',
     area: 0,
-    bedrooms: 0,
-    bathrooms: 0,
+    bedrooms: 1,
+    bathrooms: 1,
     propertyType: 'mieszkanie',
     offerType: 'sprzedaż',
     images: [],
@@ -31,18 +40,65 @@ const AdminPage = () => {
   });
   const [draggedImages, setDraggedImages] = useState<string[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError("");
     
-    const newListing: Listing = {
-      id: editingId || Date.now().toString(),
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      refreshListings();
+    }
+  };
+
+  const handleSignUp = async () => {
+    setAuthError("");
+    
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/admin`
+      }
+    });
+    
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      toast({ title: "Sprawdź email, aby potwierdzić konto" });
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    
+    const listingData = {
       title: formData.title || '',
       description: formData.description || '',
       price: formData.price || 0,
       location: formData.location || '',
       area: formData.area || 0,
-      bedrooms: formData.bedrooms || 0,
-      bathrooms: formData.bathrooms || 0,
+      bedrooms: formData.bedrooms || 1,
+      bathrooms: formData.bathrooms || 1,
       propertyType: formData.propertyType || 'mieszkanie',
       offerType: formData.offerType || 'sprzedaż',
       mainImage: draggedImages[0] || formData.images?.[0] || '',
@@ -50,19 +106,29 @@ const AdminPage = () => {
       features: formData.features || [],
       floor: formData.floor || '',
       year: formData.year || new Date().getFullYear(),
-      createdAt: editingId ? (listings.find(l => l.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
       featured: formData.featured || false,
-    };
+    } as Omit<Listing, 'id' | 'createdAt'>;
 
+    let result;
     if (editingId) {
-      updateListing(editingId, newListing);
-      toast({ title: "Zaktualizowano ogłoszenie" });
+      result = await updateListing(editingId, listingData);
+      if (!result.error) {
+        toast({ title: "Zaktualizowano ogłoszenie" });
+      }
     } else {
-      addListing(newListing);
-      toast({ title: "Dodano nowe ogłoszenie" });
+      result = await addListing(listingData);
+      if (!result.error) {
+        toast({ title: "Dodano nowe ogłoszenie" });
+      }
     }
 
-    resetForm();
+    if (result.error) {
+      toast({ title: "Błąd", description: "Nie udało się zapisać ogłoszenia", variant: "destructive" });
+    } else {
+      resetForm();
+    }
+    
+    setSaving(false);
   };
 
   const resetForm = () => {
@@ -72,8 +138,8 @@ const AdminPage = () => {
       price: 0,
       location: '',
       area: 0,
-      bedrooms: 0,
-      bathrooms: 0,
+      bedrooms: 1,
+      bathrooms: 1,
       propertyType: 'mieszkanie',
       offerType: 'sprzedaż',
       images: [],
@@ -94,10 +160,14 @@ const AdminPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?')) {
-      deleteListing(id);
-      toast({ title: "Usunięto ogłoszenie" });
+      const result = await deleteListing(id);
+      if (result.error) {
+        toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia", variant: "destructive" });
+      } else {
+        toast({ title: "Usunięto ogłoszenie" });
+      }
     }
   };
 
@@ -130,18 +200,78 @@ const AdminPage = () => {
     setDraggedImages(draggedImages.filter((_, i) => i !== index));
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Panel Administratora</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label>Email</Label>
+                <Input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Hasło</Label>
+                <Input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {authError && (
+                <p className="text-sm text-destructive">{authError}</p>
+              )}
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Zaloguj
+                </Button>
+                <Button type="button" variant="outline" onClick={handleSignUp}>
+                  Rejestracja
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-muted py-12">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-serif text-4xl font-bold">Panel Administratora</h1>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-accent hover:bg-accent/90"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Dodaj ogłoszenie
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-accent hover:bg-accent/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Dodaj ogłoszenie
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Wyloguj
+            </Button>
+          </div>
         </div>
 
         {showForm && (
@@ -175,7 +305,7 @@ const AdminPage = () => {
                     <Input
                       type="number"
                       value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                       required
                     />
                   </div>
@@ -185,7 +315,7 @@ const AdminPage = () => {
                     <Input
                       type="number"
                       value={formData.area}
-                      onChange={(e) => setFormData({ ...formData, area: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, area: parseInt(e.target.value) || 0 })}
                       required
                     />
                   </div>
@@ -195,7 +325,7 @@ const AdminPage = () => {
                     <Input
                       type="number"
                       value={formData.bedrooms}
-                      onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) || 1 })}
                       required
                     />
                   </div>
@@ -205,7 +335,7 @@ const AdminPage = () => {
                     <Input
                       type="number"
                       value={formData.bathrooms}
-                      onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) || 1 })}
                       required
                     />
                   </div>
@@ -257,7 +387,7 @@ const AdminPage = () => {
                     <Input
                       type="number"
                       value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                      onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
                       required
                     />
                   </div>
@@ -277,7 +407,7 @@ const AdminPage = () => {
                   <Label>Udogodnienia (oddzielone przecinkami)</Label>
                   <Input
                     value={formData.features?.join(', ')}
-                    onChange={(e) => setFormData({ ...formData, features: e.target.value.split(',').map(f => f.trim()) })}
+                    onChange={(e) => setFormData({ ...formData, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean) })}
                     placeholder="Klimatyzacja, Balkon, Garaż"
                   />
                 </div>
@@ -298,7 +428,7 @@ const AdminPage = () => {
                         onDragStart={handleImageDragStart(index)}
                         onDrop={handleImageDrop(index)}
                         onDragOver={(e) => e.preventDefault()}
-                        className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden cursor-move border-2 border-dashed hover:border-accent transition-colors group"
+                        className="relative aspect-video bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed hover:border-accent transition-colors group"
                       >
                         <img src={img} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
@@ -337,7 +467,8 @@ const AdminPage = () => {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button type="submit" className="bg-accent hover:bg-accent/90">
+                  <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={saving}>
+                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     <Save className="w-4 h-4 mr-2" />
                     {editingId ? 'Zapisz zmiany' : 'Dodaj ogłoszenie'}
                   </Button>
@@ -350,53 +481,64 @@ const AdminPage = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 gap-4">
-          {listings.map((listing) => (
-            <Card key={listing.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-6">
-                  <img
-                    src={listing.mainImage}
-                    alt={listing.title}
-                    className="w-48 h-32 object-cover rounded-lg"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-serif text-xl font-semibold mb-2">{listing.title}</h3>
-                        <p className="text-muted-foreground mb-2">{listing.location}</p>
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          <span>{listing.area} m²</span>
-                          <span>{listing.bedrooms} syp.</span>
-                          <span>{listing.bathrooms} łaz.</span>
-                          <span className="font-semibold text-primary">
-                            {listing.price.toLocaleString()} zł{listing.offerType === 'wynajem' && '/mies'}
-                          </span>
+        {loading ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+            <p className="text-muted-foreground mt-2">Ładowanie ogłoszeń...</p>
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Brak ogłoszeń. Dodaj pierwsze ogłoszenie!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {listings.map((listing) => (
+              <Card key={listing.id}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-6">
+                    <img
+                      src={listing.mainImage || '/placeholder.svg'}
+                      alt={listing.title}
+                      className="w-48 h-32 object-cover rounded-lg"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-serif text-xl font-semibold mb-2">{listing.title}</h3>
+                          <p className="text-muted-foreground mb-2">{listing.location}</p>
+                          <div className="flex gap-4 text-sm text-muted-foreground">
+                            <span>{listing.area} m²</span>
+                            <span>{listing.bedrooms} syp.</span>
+                            <span>{listing.bathrooms} łaz.</span>
+                            <span className="font-semibold text-primary">
+                              {listing.price.toLocaleString()} zł{listing.offerType === 'wynajem' && '/mies'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(listing)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(listing.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(listing)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(listing.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
