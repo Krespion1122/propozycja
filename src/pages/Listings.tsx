@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,14 @@ import PropertyCard from "@/components/PropertyCard";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useListings } from "@/hooks/useListings";
-import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
+
+const ITEMS_PER_PAGE = 10;
 
 const ListingsPage = () => {
   const [searchParams] = useSearchParams();
-  const { listings } = useListings();
+  const { listings, loading } = useListings();
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [priceRange, setPriceRange] = useState([0, 5000000]);
   const [areaRange, setAreaRange] = useState([0, 500]);
   const [filters, setFilters] = useState({
@@ -35,107 +35,47 @@ const ListingsPage = () => {
     if (areaMax) setAreaRange([areaRange[0], parseInt(areaMax)]);
   }, [searchParams]);
 
-  const filteredProperties = listings.filter(listing => {
-    if (filters.offerType && listing.offerType !== filters.offerType) return false;
-    if (filters.propertyType && listing.propertyType !== filters.propertyType) return false;
-    if (filters.location && !listing.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
-    if (filters.bedrooms && listing.bedrooms.toString() !== filters.bedrooms) return false;
-    if (listing.price < priceRange[0] || listing.price > priceRange[1]) return false;
-    if (listing.area < areaRange[0] || listing.area > areaRange[1]) return false;
-    return true;
-  }).sort((a, b) => {
-    if (filters.sortBy === 'price-low') return a.price - b.price;
-    if (filters.sortBy === 'price-high') return b.price - a.price;
-    if (filters.sortBy === 'area') return b.area - a.area;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  }).map(l => ({
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, priceRange, areaRange]);
+
+  const filteredProperties = useMemo(() => {
+    return listings.filter(listing => {
+      if (filters.offerType && listing.offerType !== filters.offerType) return false;
+      if (filters.propertyType && listing.propertyType !== filters.propertyType) return false;
+      if (filters.location && !listing.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
+      if (filters.bedrooms && listing.bedrooms.toString() !== filters.bedrooms) return false;
+      if (listing.price < priceRange[0] || listing.price > priceRange[1]) return false;
+      if (listing.area < areaRange[0] || listing.area > areaRange[1]) return false;
+      return true;
+    }).sort((a, b) => {
+      if (filters.sortBy === 'price-low') return a.price - b.price;
+      if (filters.sortBy === 'price-high') return b.price - a.price;
+      if (filters.sortBy === 'area') return b.area - a.area;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [listings, filters, priceRange, areaRange]);
+
+  const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+  
+  const paginatedProperties = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProperties.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredProperties, currentPage]);
+
+  const displayProperties = paginatedProperties.map(l => ({
     id: l.id,
     title: l.title,
     location: l.location,
     price: `${l.price.toLocaleString()} zł${l.offerType === 'wynajem' ? '/mies' : ''}`,
-    image: l.mainImage || property1,
+    image: l.mainImage,
     bedrooms: l.bedrooms,
     bathrooms: l.bathrooms,
     area: l.area,
     type: l.offerType,
     featured: l.featured,
   }));
-
-  // Fallback demo properties
-  const demoProperties = [
-    {
-      id: "1",
-      title: "Luksusowy apartament z widokiem",
-      location: "Warszawa, Śródmieście",
-      price: "1 200 000 zł",
-      image: property1,
-      bedrooms: 3,
-      bathrooms: 2,
-      area: 120,
-      type: "sprzedaż" as const,
-      featured: true,
-    },
-    {
-      id: "2",
-      title: "Ekskluzywny penthouse",
-      location: "Warszawa, Wilanów",
-      price: "2 500 000 zł",
-      image: property2,
-      bedrooms: 4,
-      bathrooms: 3,
-      area: 180,
-      type: "sprzedaż" as const,
-      featured: true,
-    },
-    {
-      id: "3",
-      title: "Nowoczesny apartament",
-      location: "Kraków, Kazimierz",
-      price: "850 000 zł",
-      image: property3,
-      bedrooms: 2,
-      bathrooms: 1,
-      area: 85,
-      type: "sprzedaż" as const,
-    },
-    {
-      id: "4",
-      title: "Przestronny dom z ogrodem",
-      location: "Gdańsk, Oliwa",
-      price: "1 800 000 zł",
-      image: property1,
-      bedrooms: 5,
-      bathrooms: 3,
-      area: 220,
-      type: "sprzedaż" as const,
-    },
-    {
-      id: "5",
-      title: "Mieszkanie w centrum",
-      location: "Wrocław, Stare Miasto",
-      price: "650 000 zł",
-      image: property2,
-      bedrooms: 2,
-      bathrooms: 1,
-      area: 65,
-      type: "sprzedaż" as const,
-    },
-    {
-      id: "6",
-      title: "Elegancki apartament",
-      location: "Poznań, Grunwald",
-      price: "950 000 zł",
-      image: property3,
-      bedrooms: 3,
-      bathrooms: 2,
-      area: 95,
-      type: "sprzedaż" as const,
-    },
-  ];
-
-  const displayProperties = filteredProperties.length > 0 || listings.length > 0 
-    ? filteredProperties 
-    : demoProperties;
 
   return (
     <div className="min-h-screen">
@@ -258,7 +198,7 @@ const ListingsPage = () => {
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-6">
               <p className="text-muted-foreground">
-                Znaleziono <span className="font-semibold text-foreground">{displayProperties.length}</span> ofert
+                Znaleziono <span className="font-semibold text-foreground">{filteredProperties.length}</span> ofert
               </p>
               <Select value={filters.sortBy} onValueChange={(v) => setFilters({...filters, sortBy: v})}>
                 <SelectTrigger className="w-[200px]">
@@ -273,20 +213,51 @@ const ListingsPage = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {displayProperties.map((property) => (
-                <PropertyCard key={property.id} {...property} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Ładowanie ofert...</p>
+              </div>
+            ) : displayProperties.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Brak ofert spełniających kryteria</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {displayProperties.map((property) => (
+                  <PropertyCard key={property.id} {...property} />
+                ))}
+              </div>
+            )}
 
-            {/* Pagination */}
-            <div className="flex justify-center mt-12 space-x-2">
-              <Button variant="outline" disabled>Poprzednia</Button>
-              <Button variant="outline" className="bg-primary text-primary-foreground">1</Button>
-              <Button variant="outline">2</Button>
-              <Button variant="outline">3</Button>
-              <Button variant="outline">Następna</Button>
-            </div>
+            {/* Pagination - only show if more than one page */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-12 space-x-2">
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                >
+                  Poprzednia
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button 
+                    key={page}
+                    variant="outline" 
+                    className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </Button>
+                ))}
+                <Button 
+                  variant="outline"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                >
+                  Następna
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

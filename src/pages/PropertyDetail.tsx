@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
-import { MapPin, Bed, Bath, Maximize, Calendar, Home, Phone, Mail } from "lucide-react";
-import { useState, useEffect } from "react";
+import { MapPin, Bed, Bath, Maximize, Calendar, Home, Phone, Mail, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +10,6 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ImageLightbox from "@/components/ImageLightbox";
 import { useListings } from "@/hooks/useListings";
-import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
 
 const PropertyDetailPage = () => {
   const { id } = useParams();
@@ -22,51 +19,51 @@ const PropertyDetailPage = () => {
 
   const listing = listings.find(l => l.id === id);
 
-  // Fallback data for demo
-  const property = listing ? {
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="pt-28 pb-12 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen">
+        <Navigation />
+        <div className="pt-28 pb-12">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="font-serif text-4xl font-bold mb-4">Nie znaleziono oferty</h1>
+            <p className="text-muted-foreground">Oferta o podanym ID nie istnieje.</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const property = {
     title: listing.title,
     location: listing.location,
     price: `${listing.price.toLocaleString()} zł${listing.offerType === 'wynajem' ? '/mies' : ''}`,
+    priceNum: listing.price,
     type: listing.offerType === 'sprzedaż' ? 'Sprzedaż' : 'Wynajem',
     bedrooms: listing.bedrooms,
     bathrooms: listing.bathrooms,
     area: listing.area,
     year: listing.year,
     floor: listing.floor || 'N/A',
-    images: listing.images.length > 0 ? listing.images : [property1, property2, property3],
+    images: listing.images.length > 0 ? listing.images : [listing.mainImage].filter(Boolean),
     description: listing.description,
     features: listing.features,
-  } : {
-    title: "Luksusowy apartament z widokiem na miasto",
-    location: "Warszawa, Śródmieście, ul. Marszałkowska 45",
-    price: "1 200 000 zł",
-    type: "Sprzedaż",
-    bedrooms: 3,
-    bathrooms: 2,
-    area: 120,
-    year: 2022,
-    floor: "12/15",
-    images: [property1, property2, property3],
-    description: `Ekskluzywny apartament w prestiżowej lokalizacji w sercu Warszawy. Nieruchomość charakteryzuje się wysokim standardem wykończenia i przestronnym układem pomieszczeń.
-
-Apartament składa się z przestronnego salonu z aneksem kuchennym, trzech komfortowych sypialni, dwóch eleganckich łazienek oraz przestronnego balkonu z panoramicznym widokiem na centrum miasta.
-
-Mieszkanie jest w pełni wykończone i umeblowane, gotowe do zamieszkania. W cenie znajdują się również dwa miejsca parkingowe w garażu podziemnym oraz komórka lokatorska.
-
-Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpośrednim sąsiedztwie znajdują się sklepy, restauracje, placówki edukacyjne oraz doskonała komunikacja miejska.`,
-    features: [
-      "Klimatyzacja",
-      "Ogrzewanie podłogowe",
-      "Zabudowana kuchnia",
-      "Balkon 15m²",
-      "Garaż (2 miejsca)",
-      "Komórka lokatorska",
-      "Winda",
-      "Monitoring",
-      "Ochrona 24h",
-      "Niski czynsz",
-    ],
+    createdAt: listing.createdAt,
   };
+
+  const daysSinceCreated = Math.floor((Date.now() - new Date(property.createdAt).getTime()) / (1000 * 60 * 60 * 24));
 
   return (
     <div className="min-h-screen">
@@ -75,19 +72,21 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
       <div className="pt-28 pb-12">
         <div className="container mx-auto px-4">
           {/* Main Image */}
-          <div 
-            className="h-[500px] rounded-lg overflow-hidden mb-4 cursor-pointer"
-            onClick={() => {
-              setLightboxIndex(0);
-              setLightboxOpen(true);
-            }}
-          >
-            <img
-              src={property.images[0]}
-              alt={property.title}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-            />
-          </div>
+          {property.images.length > 0 && (
+            <div 
+              className="h-[500px] rounded-lg overflow-hidden mb-4 cursor-pointer"
+              onClick={() => {
+                setLightboxIndex(0);
+                setLightboxOpen(true);
+              }}
+            >
+              <img
+                src={property.images[0]}
+                alt={property.title}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+          )}
 
           {/* Image Gallery */}
           {property.images.length > 1 && (
@@ -122,7 +121,7 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
                   </span>
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    Dodano 5 dni temu
+                    Dodano {daysSinceCreated} dni temu
                   </span>
                 </div>
                 <h1 className="font-serif text-4xl font-bold mb-4">{property.title}</h1>
@@ -169,22 +168,24 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
               </div>
 
               {/* Features */}
-              <div>
-                <h2 className="font-serif text-2xl font-semibold mb-4">Udogodnienia</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {property.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2 text-muted-foreground">
-                      <div className="w-2 h-2 bg-accent rounded-full" />
-                      {feature}
-                    </div>
-                  ))}
+              {property.features.length > 0 && (
+                <div>
+                  <h2 className="font-serif text-2xl font-semibold mb-4">Udogodnienia</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {property.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2 text-muted-foreground">
+                        <div className="w-2 h-2 bg-accent rounded-full" />
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Location */}
               <div>
                 <h2 className="font-serif text-2xl font-semibold mb-4">Lokalizacja</h2>
-                <div className="bg-gray-200 h-[400px] rounded-lg flex items-center justify-center">
+                <div className="bg-muted h-[400px] rounded-lg flex items-center justify-center">
                   <p className="text-muted-foreground">Tutaj będzie mapa Google Maps</p>
                 </div>
               </div>
@@ -201,7 +202,7 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
                         {property.price}
                       </div>
                       <div className="text-muted-foreground">
-                        {Math.round(parseInt(property.price.replace(/\s/g, '')) / property.area)} zł/m²
+                        {Math.round(property.priceNum / property.area).toLocaleString()} zł/m²
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -278,7 +279,7 @@ Budynek z 2022 roku, wyposażony w windę, monitoring 24h oraz ochronę. W bezpo
         </div>
       </div>
 
-      {lightboxOpen && (
+      {lightboxOpen && property.images.length > 0 && (
         <ImageLightbox
           images={property.images}
           currentIndex={lightboxIndex}

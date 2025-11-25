@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Home, Award, Users, CheckCircle2, ArrowRight, Star } from "lucide-react";
+import { Search, Award, Users, CheckCircle2, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,13 +9,10 @@ import Footer from "@/components/Footer";
 import { useListings } from "@/hooks/useListings";
 import { useState } from "react";
 import heroImage from "@/assets/hero-home.jpg";
-import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { listings } = useListings();
+  const { listings, loading } = useListings();
   const [searchFilters, setSearchFilters] = useState({
     offerType: '',
     propertyType: '',
@@ -29,53 +26,13 @@ const HomePage = () => {
     title: l.title,
     location: l.location,
     price: `${l.price.toLocaleString()} zł${l.offerType === 'wynajem' ? '/mies' : ''}`,
-    image: l.mainImage || property1,
+    image: l.mainImage,
     bedrooms: l.bedrooms,
     bathrooms: l.bathrooms,
     area: l.area,
     type: l.offerType,
     featured: true,
   }));
-
-  // Fallback if no listings
-  const displayProperties = featuredProperties.length > 0 ? featuredProperties : [
-    {
-      id: "1",
-      title: "Luksusowy apartament z widokiem",
-      location: "Warszawa, Śródmieście",
-      price: "1 200 000 zł",
-      image: property1,
-      bedrooms: 3,
-      bathrooms: 2,
-      area: 120,
-      type: "sprzedaż" as const,
-      featured: true,
-    },
-    {
-      id: "2",
-      title: "Ekskluzywny penthouse",
-      location: "Warszawa, Wilanów",
-      price: "15 000 zł/mies",
-      image: property2,
-      bedrooms: 4,
-      bathrooms: 3,
-      area: 180,
-      type: "wynajem" as const,
-      featured: true,
-    },
-    {
-      id: "3",
-      title: "Nowoczesny apartament",
-      location: "Kraków, Kazimierz",
-      price: "850 000 zł",
-      image: property3,
-      bedrooms: 2,
-      bathrooms: 1,
-      area: 85,
-      type: "sprzedaż" as const,
-      featured: true,
-    },
-  ];
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -173,7 +130,7 @@ const HomePage = () => {
       </section>
 
       {/* Featured Properties */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-muted">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 animate-fade-in-up">
             <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">
@@ -184,11 +141,21 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            {(featuredProperties.length > 0 ? featuredProperties : displayProperties).map((property) => (
-              <PropertyCard key={property.id} {...property} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Ładowanie ofert...</p>
+            </div>
+          ) : featuredProperties.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+              {featuredProperties.map((property) => (
+                <PropertyCard key={property.id} {...property} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Brak polecanych ofert</p>
+            </div>
+          )}
 
           <div className="text-center">
             <Button asChild size="lg" variant="outline">
@@ -248,7 +215,7 @@ const HomePage = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-muted">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">
@@ -260,7 +227,7 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-lg shadow-soft">
+            <div className="bg-card p-8 rounded-lg shadow-soft">
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-accent text-accent" />
@@ -275,7 +242,7 @@ const HomePage = () => {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-lg shadow-soft">
+            <div className="bg-card p-8 rounded-lg shadow-soft">
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-accent text-accent" />
@@ -290,7 +257,7 @@ const HomePage = () => {
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-lg shadow-soft">
+            <div className="bg-card p-8 rounded-lg shadow-soft">
               <div className="flex mb-4">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-accent text-accent" />
