@@ -1,24 +1,29 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useListings, Listing } from "@/hooks/useListings";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-// Hasło do panelu admina - zmień tutaj na swoje własne hasło
-const ADMIN_PASSWORD = "admin2024";
+import { User, Session } from "@supabase/supabase-js";
 
 const AdminPage = () => {
   const { listings, loading, addListing, updateListing, deleteListing, refreshListings } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   
@@ -40,40 +45,111 @@ const AdminPage = () => {
   });
   const [draggedImages, setDraggedImages] = useState<string[]>([]);
 
-  // Check if already logged in (session storage)
-  useEffect(() => {
-    const adminSession = sessionStorage.getItem('adminAuthenticated');
-    if (adminSession === 'true') {
-      setIsAuthenticated(true);
-      // Login to Supabase with service account for write operations
-      loginToSupabase();
+  // Check admin role
+  const checkAdminRole = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error checking admin role:', error);
+      return false;
     }
+    return !!data;
+  };
+
+  // Auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setTimeout(() => {
+            checkAdminRole(session.user.id).then(setIsAdmin);
+          }, 0);
+        } else {
+          setIsAdmin(false);
+        }
+        setAuthLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        checkAdminRole(session.user.id).then(setIsAdmin);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const loginToSupabase = async () => {
-    // Use anonymous sign-in or a service account for database operations
-    // For simplicity, we'll use the anon key which works with our RLS policies
-    // The password protection is just for the UI access
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
+    setAuthLoading(true);
     
-    if (password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('adminAuthenticated', 'true');
-      refreshListings();
-      toast({ title: "Zalogowano pomyślnie" });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      setAuthError(error.message === "Invalid login credentials" 
+        ? "Nieprawidłowy email lub hasło" 
+        : error.message);
+      setAuthLoading(false);
     } else {
-      setAuthError("Nieprawidłowe hasło");
+      toast({ title: "Zalogowano pomyślnie" });
+      refreshListings();
     }
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('adminAuthenticated');
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    
+    const redirectUrl = `${window.location.origin}/admin`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+    
+    if (error) {
+      if (error.message.includes("already registered")) {
+        setAuthError("Ten email jest już zarejestrowany. Spróbuj się zalogować.");
+      } else {
+        setAuthError(error.message);
+      }
+      setAuthLoading(false);
+    } else {
+      toast({ 
+        title: "Konto utworzone", 
+        description: "Poproś administratora o nadanie uprawnień." 
+      });
+      setAuthMode('login');
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setEmail("");
     setPassword("");
+    setIsAdmin(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,7 +188,7 @@ const AdminPage = () => {
     }
 
     if (result.error) {
-      toast({ title: "Błąd", description: "Nie udało się zapisać ogłoszenia", variant: "destructive" });
+      toast({ title: "Błąd", description: "Nie udało się zapisać ogłoszenia. Sprawdź uprawnienia.", variant: "destructive" });
     } else {
       resetForm();
     }
@@ -153,7 +229,7 @@ const AdminPage = () => {
     if (window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?')) {
       const result = await deleteListing(id);
       if (result.error) {
-        toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia", variant: "destructive" });
+        toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia. Sprawdź uprawnienia.", variant: "destructive" });
       } else {
         toast({ title: "Usunięto ogłoszenie" });
       }
@@ -189,33 +265,104 @@ const AdminPage = () => {
     setDraggedImages(draggedImages.filter((_, i) => i !== index));
   };
 
-  if (!isAuthenticated) {
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  // Not logged in - show login/signup form
+  if (!user) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-center">Panel Administratora</CardTitle>
+            <CardDescription className="text-center">
+              {authMode === 'login' ? 'Zaloguj się, aby zarządzać ogłoszeniami' : 'Utwórz konto administratora'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={authMode === 'login' ? handleLogin : handleSignup} className="space-y-4">
+              <div>
+                <Label>Email</Label>
+                <Input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
               <div>
                 <Label>Hasło</Label>
                 <Input 
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Wprowadź hasło"
+                  placeholder="••••••••"
+                  minLength={6}
                   required
                 />
               </div>
               {authError && (
                 <p className="text-sm text-destructive">{authError}</p>
               )}
-              <Button type="submit" className="w-full">
-                <LogIn className="w-4 h-4 mr-2" />
-                Zaloguj
+              <Button type="submit" className="w-full" disabled={authLoading}>
+                {authLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {authMode === 'login' ? (
+                  <>
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Zaloguj
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Zarejestruj
+                  </>
+                )}
               </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                    setAuthError("");
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground underline"
+                >
+                  {authMode === 'login' ? 'Nie masz konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}
+                </button>
+              </div>
             </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Logged in but not admin
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Brak uprawnień</CardTitle>
+            <CardDescription className="text-center">
+              Twoje konto nie ma uprawnień administratora.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Zalogowany jako: {user.email}
+            </p>
+            <Button variant="outline" onClick={handleLogout} className="w-full">
+              <LogOut className="w-4 h-4 mr-2" />
+              Wyloguj
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -226,7 +373,10 @@ const AdminPage = () => {
     <div className="min-h-screen bg-muted py-12">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="font-serif text-4xl font-bold">Panel Administratora</h1>
+          <div>
+            <h1 className="font-serif text-4xl font-bold">Panel Administratora</h1>
+            <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={() => setShowForm(!showForm)}
@@ -472,33 +622,31 @@ const AdminPage = () => {
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-serif text-xl font-semibold mb-2">{listing.title}</h3>
-                          <p className="text-muted-foreground mb-2">{listing.location}</p>
-                          <div className="flex gap-4 text-sm text-muted-foreground">
-                            <span>{listing.area} m²</span>
-                            <span>{listing.bedrooms} syp.</span>
-                            <span>{listing.bathrooms} łaz.</span>
-                            <span className="font-semibold text-primary">
-                              {listing.price.toLocaleString()} zł{listing.offerType === 'wynajem' && '/mies'}
-                            </span>
-                          </div>
+                          <h3 className="font-semibold text-lg">{listing.title}</h3>
+                          <p className="text-muted-foreground">{listing.location}</p>
+                          <p className="font-bold text-accent mt-2">
+                            {listing.price.toLocaleString('pl-PL')} zł
+                            {listing.offerType === 'wynajem' && '/mies.'}
+                          </p>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(listing)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(listing)}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(listing.id)}
-                          >
+                          <Button variant="destructive" size="sm" onClick={() => handleDelete(listing.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+                      </div>
+                      <div className="flex gap-4 mt-4 text-sm text-muted-foreground">
+                        <span>{listing.area} m²</span>
+                        <span>{listing.bedrooms} {listing.bedrooms === 1 ? 'pokój' : 'pokoje'}</span>
+                        <span>{listing.bathrooms} {listing.bathrooms === 1 ? 'łazienka' : 'łazienki'}</span>
+                        <span>{listing.propertyType}</span>
+                        <span className="capitalize">{listing.offerType}</span>
+                        {listing.featured && (
+                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs">Polecane</span>
+                        )}
                       </div>
                     </div>
                   </div>
