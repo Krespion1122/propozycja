@@ -1,0 +1,168 @@
+[
+  {
+    "id": "1",
+    "title": "Luksusowy apartament z widokiem",
+    "description": "Ekskluzywny apartament w prestiżowej lokalizacji w sercu Warszawy. Nieruchomość charakteryzuje się wysokim standardem wykończenia i przestronnym układem pomieszczeń.\n\nApartament składa się z przestronnego salonu z aneksem kuchennym, trzech komfortowych sypialni, dwóch eleganckich łazienek oraz przestronnego balkonu z panoramicznym widokiem na centrum miasta.\n\nMieszkanie jest w pełni wykończone i umeblowane, gotowe do zamieszkania. W cenie znajdują się również dwa miejsca parkingowe w garażu podziemnym oraz komórka lokatorska.",
+    "price": 1200000,
+    "location": "Warszawa, Śródmieście",
+    "area": 120,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "propertyType": "mieszkanie",
+    "offerType": "sprzedaż",
+    "mainImage": "/upload/property-1.jpg",
+    "images": [
+      "/upload/property-1.jpg",
+      "/upload/property-2.jpg",
+      "/upload/property-3.jpg"
+    ],
+    "features": [
+      "Klimatyzacja",
+      "Ogrzewanie podłogowe",
+      "Zabudowana kuchnia",
+      "Balkon 15m²",
+      "Garaż (2 miejsca)",
+      "Winda"
+    ],
+    "floor": "12/15",
+    "year": 2022,
+    "createdAt": "2025-01-15T10:00:00Z",
+    "featured": true
+  },
+  {
+    "id": "2",
+    "title": "Ekskluzywny penthouse",
+    "description": "Wyjątkowy penthouse na ostatnim piętrze nowoczesnego budynku w ekskluzywnej dzielnicy Wilanów. Apartament oferuje niepowtarzalny widok i najwyższy standard wykończenia.",
+    "price": 15000,
+    "location": "Warszawa, Wilanów",
+    "area": 180,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "propertyType": "mieszkanie",
+    "offerType": "wynajem",
+    "mainImage": "/upload/property-2.jpg",
+    "images": [
+      "/upload/property-2.jpg",
+      "/upload/property-1.jpg",
+      "/upload/property-3.jpg"
+    ],
+    "features": [
+      "Taras 60m²",
+      "Jacuzzi",
+      "Sauna",
+      "Smart home",
+      "Garaż (3 miejsca)"
+    ],
+    "floor": "15/15",
+    "year": 2023,
+    "createdAt": "2025-01-10T10:00:00Z",
+    "featured": true
+  },
+  {
+    "id": "3",
+    "title": "Nowoczesny apartament",
+    "description": "Stylowy apartament w odnowionej kamienicy w sercu Kazimierza. Połączenie historycznego charakteru z nowoczesnym komfortem.",
+    "price": 850000,
+    "location": "Kraków, Kazimierz",
+    "area": 85,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "propertyType": "mieszkanie",
+    "offerType": "sprzedaż",
+    "mainImage": "/upload/property-3.jpg",
+    "images": [
+      "/upload/property-3.jpg",
+      "/upload/property-1.jpg"
+    ],
+    "features": [
+      "Wysoki sufit",
+      "Kominek",
+      "Parkiet dębowy",
+      "Piwnica"
+    ],
+    "floor": "2/4",
+    "year": 2020,
+    "createdAt": "2025-01-05T10:00:00Z",
+    "featured": true
+  },
+  {
+    "id": "4",
+    "title": "Przestronny dom z ogrodem",
+    "description": "Komfortowy dom wolnostojący w zielonej dzielnicy Oliwa. Idealny dla rodziny ceniącej spokój i bliskość natury.",
+    "price": 1800000,
+    "location": "Gdańsk, Oliwa",
+    "area": 220,
+    "bedrooms": 5,
+    "bathrooms": 3,
+    "propertyType": "dom",
+    "offerType": "sprzedaż",
+    "mainImage": "/upload/property-1.jpg",
+    "images": [
+      "/upload/property-1.jpg",
+      "/upload/property-2.jpg"
+    ],
+    "features": [
+      "Ogród 500m²",
+      "Taras",
+      "Garaż",
+      "Kominek",
+      "Alarm"
+    ],
+    "floor": "",
+    "year": 2019,
+    "createdAt": "2025-01-12T10:00:00Z",
+    "featured": false
+  },
+  {
+    "id": "5",
+    "title": "Mieszkanie w centrum",
+    "description": "Przytulne mieszkanie w samym sercu Starego Miasta. Doskonała lokalizacja dla osób ceniących miejski styl życia.",
+    "price": 650000,
+    "location": "Wrocław, Stare Miasto",
+    "area": 65,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "propertyType": "mieszkanie",
+    "offerType": "sprzedaż",
+    "mainImage": "/upload/property-2.jpg",
+    "images": [
+      "/upload/property-2.jpg",
+      "/upload/property-3.jpg"
+    ],
+    "features": [
+      "Balkon",
+      "Piwnica",
+      "Nowe okna"
+    ],
+    "floor": "3/5",
+    "year": 2015,
+    "createdAt": "2025-01-08T10:00:00Z",
+    "featured": false
+  },
+  {
+    "id": "6",
+    "title": "Elegancki apartament",
+    "description": "Nowoczesny apartament w prestiżowej lokalizacji na Grunwaldzie. Wysoki standard i doskonała infrastruktura.",
+    "price": 950000,
+    "location": "Poznań, Grunwald",
+    "area": 95,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "propertyType": "mieszkanie",
+    "offerType": "sprzedaż",
+    "mainImage": "/upload/property-3.jpg",
+    "images": [
+      "/upload/property-3.jpg"
+    ],
+    "features": [
+      "Klimatyzacja",
+      "Balkon",
+      "Garaż",
+      "Monitoring"
+    ],
+    "floor": "8/12",
+    "year": 2021,
+    "createdAt": "2025-01-03T10:00:00Z",
+    "featured": false
+  }
+]

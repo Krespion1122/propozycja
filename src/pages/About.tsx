@@ -72,41 +72,41 @@ const AboutPage = () => {
           </div>
         </div>
 
-        {/* Team Section */}
+        {/* Company Image */}
         <div className="mb-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="font-serif text-4xl font-bold mb-6">
-                Zespół <span className="text-gradient-gold">ekspertów</span>
+                Nasza <span className="text-gradient-gold">firma</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-6">
-                Nasz zespół to grupa doświadczonych profesjonalistów, którzy łączą pasję do nieruchomości
+                Jesteśmy zespołem doświadczonych profesjonalistów, którzy łączą pasję do nieruchomości
                 z głęboką wiedzą rynkową i merytorycznym doradztwem.
               </p>
               <p className="text-lg text-muted-foreground mb-8">
-                Każdy członek naszego zespołu jest licencjonowanym agentem nieruchomości z wieloletnim
-                doświadczeniem i udokumentowanymi sukcesami.
+                Oferujemy kompleksową obsługę na najwyższym poziomie, dbając o każdy detal 
+                i zapewniając pełne bezpieczeństwo transakcji.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
                   <div>
-                    <h4 className="font-semibold mb-1">Licencjonowani agenci</h4>
-                    <p className="text-muted-foreground">Wszyscy nasi agenci posiadają odpowiednie licencje i ubezpieczenia</p>
+                    <h4 className="font-semibold mb-1">Profesjonalna obsługa</h4>
+                    <p className="text-muted-foreground">Zapewniamy kompleksową pomoc na każdym etapie transakcji</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
                   <div>
-                    <h4 className="font-semibold mb-1">Stałe szkolenia</h4>
-                    <p className="text-muted-foreground">Regularnie podnosimy kwalifikacje i śledzimy trendy rynkowe</p>
+                    <h4 className="font-semibold mb-1">Wiedza rynkowa</h4>
+                    <p className="text-muted-foreground">Stale śledzimy trendy i analizujemy rynek nieruchomości</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
                   <div>
                     <h4 className="font-semibold mb-1">Indywidualne podejście</h4>
-                    <p className="text-muted-foreground">Każdy klient otrzymuje dedykowanego opiekuna przez cały proces</p>
+                    <p className="text-muted-foreground">Każdy klient otrzymuje dedykowaną opiekę przez cały proces</p>
                   </div>
                 </div>
               </div>
@@ -114,7 +114,7 @@ const AboutPage = () => {
             <div className="rounded-lg overflow-hidden shadow-large">
               <img
                 src={teamImage}
-                alt="Zespół Premium Real Estate"
+                alt="Premium Real Estate"
                 className="w-full h-full object-cover"
               />
             </div>
