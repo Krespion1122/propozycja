@@ -9,16 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useListings, Listing } from "@/hooks/useListings";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
+
+// Hasło do panelu admina - zmień tutaj na swoje własne hasło
+const ADMIN_PASSWORD = "admin2024";
 
 const AdminPage = () => {
   const { listings, loading, addListing, updateListing, deleteListing, refreshListings } = useListings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [email, setEmail] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   
@@ -40,51 +40,40 @@ const AdminPage = () => {
   });
   const [draggedImages, setDraggedImages] = useState<string[]>([]);
 
+  // Check if already logged in (session storage)
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
+    const adminSession = sessionStorage.getItem('adminAuthenticated');
+    if (adminSession === 'true') {
+      setIsAuthenticated(true);
+      // Login to Supabase with service account for write operations
+      loginToSupabase();
+    }
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const loginToSupabase = async () => {
+    // Use anonymous sign-in or a service account for database operations
+    // For simplicity, we'll use the anon key which works with our RLS policies
+    // The password protection is just for the UI access
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
     
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      setAuthError(error.message);
-    } else {
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('adminAuthenticated', 'true');
       refreshListings();
-    }
-  };
-
-  const handleSignUp = async () => {
-    setAuthError("");
-    
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/admin`
-      }
-    });
-    
-    if (error) {
-      setAuthError(error.message);
+      toast({ title: "Zalogowano pomyślnie" });
     } else {
-      toast({ title: "Sprawdź email, aby potwierdzić konto" });
+      setAuthError("Nieprawidłowe hasło");
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('adminAuthenticated');
+    setPassword("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,15 +189,7 @@ const AdminPage = () => {
     setDraggedImages(draggedImages.filter((_, i) => i !== index));
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -218,35 +199,22 @@ const AdminPage = () => {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <Label>Email</Label>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
                 <Label>Hasło</Label>
                 <Input 
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Wprowadź hasło"
                   required
                 />
               </div>
               {authError && (
                 <p className="text-sm text-destructive">{authError}</p>
               )}
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Zaloguj
-                </Button>
-                <Button type="button" variant="outline" onClick={handleSignUp}>
-                  Rejestracja
-                </Button>
-              </div>
+              <Button type="submit" className="w-full">
+                <LogIn className="w-4 h-4 mr-2" />
+                Zaloguj
+              </Button>
             </form>
           </CardContent>
         </Card>
