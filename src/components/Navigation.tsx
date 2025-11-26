@@ -12,8 +12,11 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-navy-light rounded flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-xl">DN</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-navy-light rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-primary-foreground" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3L2 12h3v9h6v-6h2v6h6v-9h3L12 3zm0 2.84L18 11v8h-2v-6H8v6H6v-8l6-5.16z"/>
+                <path d="M12 3L2 12h3v9h6v-6h2v6h6v-9h3L12 3z"/>
+              </svg>
             </div>
             <div className="flex flex-col">
               <span className="font-serif font-bold text-xl leading-none">Dom Nieruchomości</span>

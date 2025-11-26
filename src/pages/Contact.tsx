@@ -54,12 +54,49 @@ const ContactPage = () => {
       <Navigation />
 
       {/* Header */}
-      <section className="pt-32 pb-12 bg-gradient-to-r from-primary to-navy-light text-primary-foreground">
-        <div className="container mx-auto px-4">
-          <h1 className="font-serif text-5xl font-bold mb-4">Kontakt</h1>
-          <p className="text-xl text-primary-foreground/90">
-            Skontaktuj się z nami - chętnie odpowiemy na wszystkie pytania
-          </p>
+      <section className="pt-32 pb-20 bg-gradient-to-br from-primary via-navy-light to-primary text-primary-foreground relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 right-10 w-32 h-32 border-2 border-white rounded-full" />
+          <div className="absolute top-32 left-20 w-48 h-48 border border-white rounded-full" />
+          <div className="absolute bottom-10 right-1/4 w-24 h-24 border border-white rounded-lg rotate-45" />
+          <div className="absolute bottom-16 left-1/3 w-16 h-16 bg-white/20 rounded-full" />
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center">
+                  <Mail className="w-6 h-6 text-accent-foreground" />
+                </div>
+                <span className="text-accent font-medium uppercase tracking-wider text-sm">Napisz do nas</span>
+              </div>
+              <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6">Kontakt</h1>
+              <p className="text-xl text-primary-foreground/90 max-w-2xl mb-6">
+                Skontaktuj się z nami - chętnie odpowiemy na wszystkie pytania
+              </p>
+              <div className="flex flex-wrap items-center gap-6 text-primary-foreground/80">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-accent" />
+                  <span>+48 123 456 789</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-accent" />
+                  <span>Pon-Pt: 9:00-18:00</span>
+                </div>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center justify-center">
+              <div className="relative">
+                <div className="w-40 h-40 bg-accent/20 rounded-full flex items-center justify-center">
+                  <div className="w-28 h-28 bg-accent/40 rounded-full flex items-center justify-center">
+                    <MapPin className="w-14 h-14 text-accent" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
