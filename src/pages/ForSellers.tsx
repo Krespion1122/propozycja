@@ -52,23 +52,63 @@ const ForSellersPage = () => {
       <Navigation />
 
       {/* Header */}
-      <section className="pt-32 pb-16 bg-gradient-to-r from-primary to-navy-light text-primary-foreground">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl">
-            <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6">
-              Sprzedaj swoją nieruchomość z nami
-            </h1>
-            <p className="text-xl text-primary-foreground/90 mb-8">
-              Profesjonalna obsługa, maksymalna cena i pełne bezpieczeństwo transakcji.
-              Zaufało nam już ponad 3000 klientów.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                <Link to="/kontakt">Bezpłatna wycena</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild className="bg-white/10 hover:bg-white/20 text-white border-white/30">
-                <Link to="/kontakt">Umów spotkanie</Link>
-              </Button>
+      <section className="pt-32 pb-20 bg-gradient-to-br from-primary via-navy-light to-primary text-primary-foreground relative overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-32 h-32 border-2 border-white rounded-full" />
+          <div className="absolute top-20 right-20 w-48 h-48 border border-white rounded-full" />
+          <div className="absolute bottom-10 left-1/4 w-24 h-24 border border-white rounded-lg rotate-45" />
+          <div className="absolute bottom-20 right-1/3 w-16 h-16 bg-white/20 rounded-full" />
+          <div className="absolute top-1/2 right-10 w-20 h-20 border border-white rounded-full" />
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-accent-foreground" />
+                </div>
+                <span className="text-accent font-medium uppercase tracking-wider text-sm">Dla sprzedających</span>
+              </div>
+              <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6">
+                Sprzedaj swoją nieruchomość z nami
+              </h1>
+              <p className="text-xl text-primary-foreground/90 mb-6">
+                Profesjonalna obsługa, maksymalna cena i pełne bezpieczeństwo transakcji.
+                Zaufało nam już ponad 3000 klientów.
+              </p>
+              <div className="flex flex-wrap items-center gap-4 text-primary-foreground/80 mb-8">
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                  <Shield className="w-5 h-5 text-accent" />
+                  <span>Bezpieczeństwo</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                  <TrendingUp className="w-5 h-5 text-accent" />
+                  <span>Najlepsza cena</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
+                  <CheckCircle2 className="w-5 h-5 text-accent" />
+                  <span>Kompleksowa obsługa</span>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button size="lg" asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Link to="/kontakt">Bezpłatna wycena</Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild className="bg-white/10 hover:bg-white/20 text-white border-white/30">
+                  <Link to="/kontakt">Umów spotkanie</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="hidden lg:flex items-center justify-center">
+              <div className="relative">
+                <div className="w-48 h-48 bg-accent/20 rounded-full flex items-center justify-center">
+                  <div className="w-32 h-32 bg-accent/40 rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-16 h-16 text-accent" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
