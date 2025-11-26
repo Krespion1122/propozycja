@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, Mail, Eye, Check, MapPin, Home, MessageSquare, Building, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, Mail, Eye, Check, MapPin, Home, MessageSquare, Building, ArrowLeft, Upload, Image } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,8 @@ const AdminPage = () => {
     googleMapsUrl: '',
   });
   const [draggedImages, setDraggedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const auth = sessionStorage.getItem('admin_auth');
@@ -75,6 +78,9 @@ const AdminPage = () => {
     e.preventDefault();
     setSaving(true);
     
+    // Filter out empty features
+    const cleanFeatures = (formData.features || []).filter(f => f.trim() !== '');
+    
     const listingData = {
       title: formData.title || '',
       description: formData.description || '',
@@ -87,7 +93,7 @@ const AdminPage = () => {
       offerType: formData.offerType || 'sprzedaż',
       mainImage: draggedImages[0] || formData.images?.[0] || '',
       images: draggedImages.length > 0 ? draggedImages : formData.images || [],
-      features: formData.features || [],
+      features: cleanFeatures,
       floor: formData.floor || '',
       year: formData.year || new Date().getFullYear(),
       featured: formData.featured || false,
@@ -148,6 +154,29 @@ const AdminPage = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?')) {
+      // Find the listing to get its images
+      const listing = listings.find(l => l.id === id);
+      
+      // Delete images from storage
+      if (listing?.images && listing.images.length > 0) {
+        const pathsToDelete: string[] = [];
+        for (const imageUrl of listing.images) {
+          if (imageUrl.includes('property-images')) {
+            const pathMatch = imageUrl.match(/property-images\/(.+)$/);
+            if (pathMatch) {
+              pathsToDelete.push(pathMatch[1]);
+            }
+          }
+        }
+        if (pathsToDelete.length > 0) {
+          try {
+            await supabase.storage.from('property-images').remove(pathsToDelete);
+          } catch (error) {
+            console.error('Error deleting images:', error);
+          }
+        }
+      }
+      
       const result = await deleteListing(id);
       if (result.error) {
         toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia.", variant: "destructive" });
@@ -175,14 +204,66 @@ const AdminPage = () => {
     };
   };
 
-  const addImageUrl = () => {
-    const url = prompt('Podaj URL zdjęcia:');
-    if (url) {
-      setDraggedImages([...draggedImages, url]);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `listings/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast({ title: "Błąd", description: `Nie udało się wgrać: ${file.name}`, variant: "destructive" });
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setDraggedImages([...draggedImages, ...uploadedUrls]);
+        toast({ title: "Sukces", description: `Wgrano ${uploadedUrls.length} zdjęć` });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ title: "Błąd", description: "Wystąpił błąd podczas wgrywania zdjęć", variant: "destructive" });
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const imageUrl = draggedImages[index];
+    
+    // Try to delete from storage if it's a Supabase URL
+    if (imageUrl.includes('property-images')) {
+      try {
+        const pathMatch = imageUrl.match(/property-images\/(.+)$/);
+        if (pathMatch) {
+          await supabase.storage.from('property-images').remove([pathMatch[1]]);
+        }
+      } catch (error) {
+        console.error('Error deleting image from storage:', error);
+      }
+    }
+    
     setDraggedImages(draggedImages.filter((_, i) => i !== index));
   };
 
@@ -465,8 +546,12 @@ const AdminPage = () => {
                       <Label>Udogodnienia (każde w nowej linii)</Label>
                       <Textarea
                         value={formData.features?.join('\n') || ''}
-                        onChange={(e) => setFormData({ ...formData, features: e.target.value.split('\n').map(f => f.trim()).filter(Boolean) })}
-                        placeholder="Klimatyzacja&#10;Balkon&#10;Garaż&#10;Winda"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const features = value.split('\n').map(f => f.trim());
+                          setFormData({ ...formData, features });
+                        }}
+                        placeholder={"Klimatyzacja\nBalkon\nGaraż\nWinda"}
                         rows={4}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
@@ -477,11 +562,42 @@ const AdminPage = () => {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <Label>Zdjęcia (przeciągnij, aby zmienić kolejność)</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={addImageUrl}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Dodaj zdjęcie
-                        </Button>
+                        <div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            id="image-upload"
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImages}
+                          >
+                            {uploadingImages ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4 mr-2" />
+                            )}
+                            {uploadingImages ? 'Wgrywanie...' : 'Wybierz z dysku'}
+                          </Button>
+                        </div>
                       </div>
+                      {draggedImages.length === 0 && (
+                        <div 
+                          className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-accent transition-colors"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Image className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">Kliknij aby wybrać zdjęcia z dysku</p>
+                          <p className="text-xs text-muted-foreground mt-1">lub przeciągnij i upuść pliki</p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {draggedImages.map((img, index) => (
                           <div
