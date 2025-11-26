@@ -10,10 +10,10 @@ const Footer = () => {
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-10 h-10 bg-accent rounded flex items-center justify-center">
-                <span className="text-accent-foreground font-serif font-bold text-xl">PR</span>
+                <span className="text-accent-foreground font-serif font-bold text-xl">DN</span>
               </div>
               <div className="flex flex-col">
-                <span className="font-serif font-bold text-lg leading-none">Premium Real Estate</span>
+                <span className="font-serif font-bold text-lg leading-none">Dom Nieruchomości</span>
               </div>
             </div>
             <p className="text-sm text-primary-foreground/80 mb-4">
@@ -90,8 +90,8 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="w-5 h-5 flex-shrink-0" />
-                <a href="mailto:kontakt@premiumrealestate.pl" className="hover:text-accent transition-colors">
-                  kontakt@premium.pl
+                <a href="mailto:kontakt@domnieruchomosci.pl" className="hover:text-accent transition-colors">
+                  kontakt@domnieruchomosci.pl
                 </a>
               </li>
             </ul>
@@ -101,7 +101,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-primary-foreground/20">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-primary-foreground/60">
-            <p>&copy; 2024 Premium Real Estate. Wszelkie prawa zastrzeżone.</p>
+            <p>&copy; 2025 Dom Nieruchomości. Wszelkie prawa zastrzeżone.</p>
             <div className="flex gap-6">
               <Link to="#" className="hover:text-accent transition-colors">
                 Polityka prywatności

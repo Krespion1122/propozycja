@@ -19,6 +19,7 @@ export interface Listing {
   year: number;
   createdAt: string;
   featured?: boolean;
+  googleMapsUrl?: string;
 }
 
 interface DbListing {
@@ -39,6 +40,7 @@ interface DbListing {
   year: number | null;
   created_at: string;
   featured: boolean | null;
+  google_maps_url: string | null;
 }
 
 const mapDbToListing = (db: DbListing): Listing => ({
@@ -59,6 +61,7 @@ const mapDbToListing = (db: DbListing): Listing => ({
   year: db.year || new Date().getFullYear(),
   createdAt: db.created_at,
   featured: db.featured || false,
+  googleMapsUrl: db.google_maps_url || undefined,
 });
 
 const mapListingToDb = (listing: Omit<Listing, 'id' | 'createdAt'>) => ({
@@ -77,6 +80,7 @@ const mapListingToDb = (listing: Omit<Listing, 'id' | 'createdAt'>) => ({
   floor: listing.floor || null,
   year: listing.year,
   featured: listing.featured || false,
+  google_maps_url: listing.googleMapsUrl || null,
 });
 
 export const useListings = () => {

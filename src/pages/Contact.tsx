@@ -1,4 +1,5 @@
-import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { useState } from "react";
+import { Phone, Mail, MapPin, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,8 +7,48 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { useMessages } from "@/hooks/useMessages";
+import { toast } from "@/hooks/use-toast";
 
 const ContactPage = () => {
+  const { sendMessage } = useMessages();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: '',
+  });
+  const [sending, setSending] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agreed) {
+      toast({ title: "Uwaga", description: "Musisz wyrazić zgodę na przetwarzanie danych.", variant: "destructive" });
+      return;
+    }
+    
+    setSending(true);
+    const result = await sendMessage({
+      name: `${formData.firstName} ${formData.lastName}`,
+      email: formData.email,
+      phone: formData.phone,
+      subject: formData.subject,
+      message: formData.message,
+    });
+
+    if (result.error) {
+      toast({ title: "Błąd", description: "Nie udało się wysłać wiadomości.", variant: "destructive" });
+    } else {
+      toast({ title: "Wysłano", description: "Twoja wiadomość została wysłana. Skontaktujemy się wkrótce." });
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', subject: '', message: '' });
+      setAgreed(false);
+    }
+    setSending(false);
+  };
+
   return (
     <div className="min-h-screen">
       <Navigation />
@@ -52,10 +93,10 @@ const ContactPage = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Email</h3>
                     <a
-                      href="mailto:kontakt@premiumrealestate.pl"
+                      href="mailto:kontakt@domnieruchomosci.pl"
                       className="text-muted-foreground hover:text-primary transition-colors break-all"
                     >
-                      kontakt@premium.pl
+                      kontakt@domnieruchomosci.pl
                     </a>
                     <p className="text-sm text-muted-foreground mt-1">Odpowiadamy w ciągu 24h</p>
                   </div>
@@ -114,32 +155,63 @@ const ContactPage = () => {
             <Card>
               <CardContent className="p-8">
                 <h2 className="font-serif text-3xl font-bold mb-6">Wyślij wiadomość</h2>
-                <form className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="firstName">Imię *</Label>
-                      <Input id="firstName" placeholder="Jan" required />
+                      <Input 
+                        id="firstName" 
+                        placeholder="Jan" 
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        required 
+                      />
                     </div>
                     <div>
                       <Label htmlFor="lastName">Nazwisko *</Label>
-                      <Input id="lastName" placeholder="Kowalski" required />
+                      <Input 
+                        id="lastName" 
+                        placeholder="Kowalski" 
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        required 
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="email">Email *</Label>
-                      <Input id="email" type="email" placeholder="jan@example.com" required />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="jan@example.com" 
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        required 
+                      />
                     </div>
                     <div>
                       <Label htmlFor="phone">Telefon *</Label>
-                      <Input id="phone" type="tel" placeholder="+48 123 456 789" required />
+                      <Input 
+                        id="phone" 
+                        type="tel" 
+                        placeholder="+48 123 456 789" 
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required 
+                      />
                     </div>
                   </div>
 
                   <div>
                     <Label htmlFor="subject">Temat</Label>
-                    <Input id="subject" placeholder="Pytanie o ofertę" />
+                    <Input 
+                      id="subject" 
+                      placeholder="Pytanie o ofertę" 
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    />
                   </div>
 
                   <div>
@@ -148,12 +220,21 @@ const ContactPage = () => {
                       id="message"
                       placeholder="Wpisz swoją wiadomość..."
                       rows={6}
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       required
                     />
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <input type="checkbox" id="terms" className="mt-1" required />
+                    <input 
+                      type="checkbox" 
+                      id="terms" 
+                      className="mt-1" 
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      required 
+                    />
                     <label htmlFor="terms" className="text-sm text-muted-foreground">
                       Wyrażam zgodę na przetwarzanie moich danych osobowych zgodnie z{" "}
                       <a href="#" className="text-primary hover:underline">
@@ -162,7 +243,13 @@ const ContactPage = () => {
                     </label>
                   </div>
 
-                  <Button type="submit" size="lg" className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground"
+                    disabled={sending}
+                  >
+                    {sending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Wyślij wiadomość
                   </Button>
                 </form>
@@ -172,8 +259,17 @@ const ContactPage = () => {
             {/* Map */}
             <div className="mt-8">
               <h3 className="font-serif text-2xl font-semibold mb-4">Nasza lokalizacja</h3>
-              <div className="bg-gray-200 h-[400px] rounded-lg flex items-center justify-center">
-                <p className="text-muted-foreground">Tutaj będzie mapa Google Maps</p>
+              <div className="bg-muted h-[400px] rounded-lg overflow-hidden">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2443.515556060645!2d21.012228776691745!3d52.229675971981!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x471ecc8c92692e49%3A0xc2e97ae22de0ecc6!2sPa%C5%82ac%20Kultury%20i%20Nauki!5e0!3m2!1spl!2spl!4v1709123456789!5m2!1spl!2spl"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Lokalizacja biura"
+                />
               </div>
             </div>
           </div>

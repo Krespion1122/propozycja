@@ -1,29 +1,26 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, UserPlus } from "lucide-react";
+import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, Mail, Eye, Check, MapPin, Home, MessageSquare, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useListings, Listing } from "@/hooks/useListings";
+import { useMessages } from "@/hooks/useMessages";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { User, Session } from "@supabase/supabase-js";
+
+const ADMIN_PASSWORD = "admin123";
 
 const AdminPage = () => {
   const { listings, loading, addListing, updateListing, deleteListing, refreshListings } = useListings();
+  const { messages, loading: messagesLoading, markAsRead, deleteMessage, refreshMessages } = useMessages();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  // Auth state
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   
@@ -42,114 +39,35 @@ const AdminPage = () => {
     floor: '',
     year: new Date().getFullYear(),
     featured: false,
+    googleMapsUrl: '',
   });
   const [draggedImages, setDraggedImages] = useState<string[]>([]);
 
-  // Check admin role
-  const checkAdminRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
-    
-    if (error) {
-      console.error('Error checking admin role:', error);
-      return false;
-    }
-    return !!data;
-  };
-
-  // Auth state listener
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id).then(setIsAdmin);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-        }
-        setAuthLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        checkAdminRole(session.user.id).then(setIsAdmin);
-      }
-      setAuthLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    const auth = sessionStorage.getItem('admin_auth');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError("");
-    setAuthLoading(true);
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      setAuthError(error.message === "Invalid login credentials" 
-        ? "Nieprawidłowy email lub hasło" 
-        : error.message);
-      setAuthLoading(false);
-    } else {
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('admin_auth', 'true');
+      setAuthError("");
       toast({ title: "Zalogowano pomyślnie" });
       refreshListings();
-    }
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError("");
-    setAuthLoading(true);
-    
-    const redirectUrl = `${window.location.origin}/admin`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-    
-    if (error) {
-      if (error.message.includes("already registered")) {
-        setAuthError("Ten email jest już zarejestrowany. Spróbuj się zalogować.");
-      } else {
-        setAuthError(error.message);
-      }
-      setAuthLoading(false);
+      refreshMessages();
     } else {
-      toast({ 
-        title: "Konto utworzone", 
-        description: "Poproś administratora o nadanie uprawnień." 
-      });
-      setAuthMode('login');
-      setAuthLoading(false);
+      setAuthError("Nieprawidłowe hasło");
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setEmail("");
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('admin_auth');
     setPassword("");
-    setIsAdmin(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,6 +90,7 @@ const AdminPage = () => {
       floor: formData.floor || '',
       year: formData.year || new Date().getFullYear(),
       featured: formData.featured || false,
+      googleMapsUrl: formData.googleMapsUrl || '',
     } as Omit<Listing, 'id' | 'createdAt'>;
 
     let result;
@@ -188,7 +107,7 @@ const AdminPage = () => {
     }
 
     if (result.error) {
-      toast({ title: "Błąd", description: "Nie udało się zapisać ogłoszenia. Sprawdź uprawnienia.", variant: "destructive" });
+      toast({ title: "Błąd", description: "Nie udało się zapisać ogłoszenia.", variant: "destructive" });
     } else {
       resetForm();
     }
@@ -212,6 +131,7 @@ const AdminPage = () => {
       floor: '',
       year: new Date().getFullYear(),
       featured: false,
+      googleMapsUrl: '',
     });
     setDraggedImages([]);
     setEditingId(null);
@@ -229,7 +149,7 @@ const AdminPage = () => {
     if (window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?')) {
       const result = await deleteListing(id);
       if (result.error) {
-        toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia. Sprawdź uprawnienia.", variant: "destructive" });
+        toast({ title: "Błąd", description: "Nie udało się usunąć ogłoszenia.", variant: "destructive" });
       } else {
         toast({ title: "Usunięto ogłoszenie" });
       }
@@ -265,38 +185,40 @@ const AdminPage = () => {
     setDraggedImages(draggedImages.filter((_, i) => i !== index));
   };
 
-  // Loading state
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
+  const handleMarkAsRead = async (id: string) => {
+    const result = await markAsRead(id);
+    if (!result.error) {
+      toast({ title: "Oznaczono jako przeczytane" });
+    }
+  };
 
-  // Not logged in - show login/signup form
-  if (!user) {
+  const handleDeleteMessage = async (id: string) => {
+    if (window.confirm('Czy na pewno chcesz usunąć tę wiadomość?')) {
+      const result = await deleteMessage(id);
+      if (!result.error) {
+        toast({ title: "Usunięto wiadomość" });
+      }
+    }
+  };
+
+  const unreadCount = messages.filter(m => !m.isRead).length;
+
+  // Not logged in - show login form
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Panel Administratora</CardTitle>
-            <CardDescription className="text-center">
-              {authMode === 'login' ? 'Zaloguj się, aby zarządzać ogłoszeniami' : 'Utwórz konto administratora'}
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="text-center pb-2">
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-navy-light rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Home className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <CardTitle className="font-serif text-2xl">Panel Administratora</CardTitle>
+            <CardDescription>
+              Dom Nieruchomości
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={authMode === 'login' ? handleLogin : handleSignup} className="space-y-4">
-              <div>
-                <Label>Email</Label>
-                <Input 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                />
-              </div>
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <Label>Hasło</Label>
                 <Input 
@@ -304,39 +226,17 @@ const AdminPage = () => {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  minLength={6}
+                  className="mt-1"
                   required
                 />
               </div>
               {authError && (
-                <p className="text-sm text-destructive">{authError}</p>
+                <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">{authError}</p>
               )}
-              <Button type="submit" className="w-full" disabled={authLoading}>
-                {authLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {authMode === 'login' ? (
-                  <>
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Zaloguj
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Zarejestruj
-                  </>
-                )}
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
+                <LogIn className="w-4 h-4 mr-2" />
+                Zaloguj
               </Button>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                    setAuthError("");
-                  }}
-                  className="text-sm text-muted-foreground hover:text-foreground underline"
-                >
-                  {authMode === 'login' ? 'Nie masz konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}
-                </button>
-              </div>
             </form>
           </CardContent>
         </Card>
@@ -344,317 +244,422 @@ const AdminPage = () => {
     );
   }
 
-  // Logged in but not admin
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Brak uprawnień</CardTitle>
-            <CardDescription className="text-center">
-              Twoje konto nie ma uprawnień administratora.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Zalogowany jako: {user.email}
-            </p>
-            <Button variant="outline" onClick={handleLogout} className="w-full">
-              <LogOut className="w-4 h-4 mr-2" />
-              Wyloguj
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-muted py-12">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-serif text-4xl font-bold">Panel Administratora</h1>
-            <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-accent hover:bg-accent/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Dodaj ogłoszenie
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
+    <div className="min-h-screen bg-gradient-to-br from-muted/50 via-background to-muted/50">
+      {/* Header */}
+      <div className="bg-card border-b border-border sticky top-0 z-10">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-navy-light rounded-lg flex items-center justify-center">
+                <Home className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="font-serif text-xl font-bold">Panel Administratora</h1>
+                <p className="text-xs text-muted-foreground">Dom Nieruchomości</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Wyloguj
             </Button>
           </div>
         </div>
+      </div>
 
-        {showForm && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>{editingId ? 'Edytuj ogłoszenie' : 'Nowe ogłoszenie'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label>Tytuł *</Label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      required
-                    />
-                  </div>
+      <div className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="listings" className="space-y-6">
+          <TabsList className="bg-card border">
+            <TabsTrigger value="listings" className="gap-2">
+              <Building className="w-4 h-4" />
+              Ogłoszenia
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Wiadomości
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 justify-center text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-                  <div>
-                    <Label>Lokalizacja *</Label>
-                    <Input
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      required
-                    />
-                  </div>
+          {/* Listings Tab */}
+          <TabsContent value="listings" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-serif text-2xl font-bold">Zarządzaj ogłoszeniami</h2>
+                <p className="text-muted-foreground">Łącznie: {listings.length} ofert</p>
+              </div>
+              <Button onClick={() => setShowForm(!showForm)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                <Plus className="w-4 h-4 mr-2" />
+                Dodaj ogłoszenie
+              </Button>
+            </div>
 
-                  <div>
-                    <Label>Cena (zł) *</Label>
-                    <Input
-                      type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Powierzchnia (m²) *</Label>
-                    <Input
-                      type="number"
-                      value={formData.area}
-                      onChange={(e) => setFormData({ ...formData, area: parseInt(e.target.value) || 0 })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Liczba sypialni *</Label>
-                    <Input
-                      type="number"
-                      value={formData.bedrooms}
-                      onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) || 1 })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Liczba łazienek *</Label>
-                    <Input
-                      type="number"
-                      value={formData.bathrooms}
-                      onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) || 1 })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Typ nieruchomości *</Label>
-                    <Select
-                      value={formData.propertyType}
-                      onValueChange={(value: any) => setFormData({ ...formData, propertyType: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mieszkanie">Mieszkanie</SelectItem>
-                        <SelectItem value="dom">Dom</SelectItem>
-                        <SelectItem value="lokal">Lokal komercyjny</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Typ oferty *</Label>
-                    <Select
-                      value={formData.offerType}
-                      onValueChange={(value: any) => setFormData({ ...formData, offerType: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sprzedaż">Sprzedaż</SelectItem>
-                        <SelectItem value="wynajem">Wynajem</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Piętro</Label>
-                    <Input
-                      value={formData.floor}
-                      onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                      placeholder="np. 2/5"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Rok budowy *</Label>
-                    <Input
-                      type="number"
-                      value={formData.year}
-                      onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Opis *</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={6}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Udogodnienia (oddzielone przecinkami)</Label>
-                  <Input
-                    value={formData.features?.join(', ')}
-                    onChange={(e) => setFormData({ ...formData, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean) })}
-                    placeholder="Klimatyzacja, Balkon, Garaż"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <Label>Zdjęcia (przeciągnij, aby zmienić kolejność)</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addImageUrl}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Dodaj zdjęcie
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {draggedImages.map((img, index) => (
-                      <div
-                        key={index}
-                        draggable
-                        onDragStart={handleImageDragStart(index)}
-                        onDrop={handleImageDrop(index)}
-                        onDragOver={(e) => e.preventDefault()}
-                        className="relative aspect-video bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed hover:border-accent transition-colors group"
-                      >
-                        <img src={img} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
-                          <GripVertical className="w-6 h-6 text-white opacity-0 group-hover:opacity-100" />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                        {index === 0 && (
-                          <div className="absolute bottom-2 left-2 bg-accent text-accent-foreground px-2 py-1 rounded text-xs font-semibold">
-                            Główne
-                          </div>
-                        )}
+            {showForm && (
+              <Card className="border-accent/20">
+                <CardHeader className="bg-accent/5 border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    {editingId ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                    {editingId ? 'Edytuj ogłoszenie' : 'Nowe ogłoszenie'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-2">
+                        <Label>Tytuł *</Label>
+                        <Input
+                          value={formData.title}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          placeholder="np. Przestronne mieszkanie w centrum"
+                          required
+                        />
                       </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Pierwsze zdjęcie będzie zdjęciem głównym ogłoszenia
-                  </p>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="featured"
-                    checked={formData.featured}
-                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                  />
-                  <Label htmlFor="featured">Ogłoszenie polecane</Label>
-                </div>
+                      <div>
+                        <Label>Cena (zł) *</Label>
+                        <Input
+                          type="number"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                          required
+                        />
+                      </div>
 
-                <div className="flex gap-4">
-                  <Button type="submit" className="bg-accent hover:bg-accent/90" disabled={saving}>
-                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingId ? 'Zapisz zmiany' : 'Dodaj ogłoszenie'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Anuluj
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+                      <div>
+                        <Label>Lokalizacja *</Label>
+                        <Input
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          placeholder="np. Warszawa, Mokotów"
+                          required
+                        />
+                      </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto" />
-            <p className="text-muted-foreground mt-2">Ładowanie ogłoszeń...</p>
-          </div>
-        ) : listings.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Brak ogłoszeń. Dodaj pierwsze ogłoszenie!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {listings.map((listing) => (
-              <Card key={listing.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-6">
-                    <img
-                      src={listing.mainImage || '/placeholder.svg'}
-                      alt={listing.title}
-                      className="w-48 h-32 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-lg">{listing.title}</h3>
-                          <p className="text-muted-foreground">{listing.location}</p>
-                          <p className="font-bold text-accent mt-2">
-                            {listing.price.toLocaleString('pl-PL')} zł
-                            {listing.offerType === 'wynajem' && '/mies.'}
+                      <div>
+                        <Label>Powierzchnia (m²) *</Label>
+                        <Input
+                          type="number"
+                          value={formData.area}
+                          onChange={(e) => setFormData({ ...formData, area: parseInt(e.target.value) || 0 })}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Liczba sypialni *</Label>
+                        <Input
+                          type="number"
+                          value={formData.bedrooms}
+                          onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) || 1 })}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Liczba łazienek *</Label>
+                        <Input
+                          type="number"
+                          value={formData.bathrooms}
+                          onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) || 1 })}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Typ nieruchomości *</Label>
+                        <Select
+                          value={formData.propertyType}
+                          onValueChange={(value: any) => setFormData({ ...formData, propertyType: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mieszkanie">Mieszkanie</SelectItem>
+                            <SelectItem value="dom">Dom</SelectItem>
+                            <SelectItem value="lokal">Lokal komercyjny</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Typ oferty *</Label>
+                        <Select
+                          value={formData.offerType}
+                          onValueChange={(value: any) => setFormData({ ...formData, offerType: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sprzedaż">Sprzedaż</SelectItem>
+                            <SelectItem value="wynajem">Wynajem</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Piętro</Label>
+                        <Input
+                          value={formData.floor}
+                          onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                          placeholder="np. 2/5"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Rok budowy *</Label>
+                        <Input
+                          type="number"
+                          value={formData.year}
+                          onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() })}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Link do Google Maps (pinezka)</Label>
+                      <Input
+                        value={formData.googleMapsUrl}
+                        onChange={(e) => setFormData({ ...formData, googleMapsUrl: e.target.value })}
+                        placeholder="https://www.google.com/maps/embed?pb=..."
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Wklej link embed z Google Maps (udostępnij → umieść na stronie → kopiuj link src)
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label>Opis *</Label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={5}
+                        placeholder="Szczegółowy opis nieruchomości..."
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Udogodnienia (oddzielone przecinkami)</Label>
+                      <Input
+                        value={formData.features?.join(', ')}
+                        onChange={(e) => setFormData({ ...formData, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean) })}
+                        placeholder="Klimatyzacja, Balkon, Garaż, Winda"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <Label>Zdjęcia (przeciągnij, aby zmienić kolejność)</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addImageUrl}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Dodaj zdjęcie
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {draggedImages.map((img, index) => (
+                          <div
+                            key={index}
+                            draggable
+                            onDragStart={handleImageDragStart(index)}
+                            onDrop={handleImageDrop(index)}
+                            onDragOver={(e) => e.preventDefault()}
+                            className="relative aspect-video bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed hover:border-accent transition-colors group"
+                          >
+                            <img src={img} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                              <GripVertical className="w-6 h-6 text-white opacity-0 group-hover:opacity-100" />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 w-6 h-6 opacity-0 group-hover:opacity-100"
+                              onClick={() => removeImage(index)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                            {index === 0 && (
+                              <Badge className="absolute bottom-1 left-1 bg-accent text-accent-foreground text-xs">
+                                Główne
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="featured"
+                        checked={formData.featured}
+                        onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="featured" className="cursor-pointer">Ogłoszenie polecane (wyświetlane na stronie głównej)</Label>
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t">
+                      <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={saving}>
+                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        <Save className="w-4 h-4 mr-2" />
+                        {editingId ? 'Zapisz zmiany' : 'Dodaj ogłoszenie'}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={resetForm}>
+                        Anuluj
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                <p className="text-muted-foreground mt-2">Ładowanie ogłoszeń...</p>
+              </div>
+            ) : listings.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <Building className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Brak ogłoszeń. Dodaj pierwsze ogłoszenie!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {listings.map((listing) => (
+                  <Card key={listing.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={listing.mainImage || '/placeholder.svg'}
+                          alt={listing.title}
+                          className="w-32 h-24 object-cover rounded-lg flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-lg truncate">{listing.title}</h3>
+                              <p className="text-muted-foreground text-sm flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {listing.location}
+                              </p>
+                              <p className="font-bold text-primary mt-1">
+                                {listing.price.toLocaleString('pl-PL')} zł
+                                {listing.offerType === 'wynajem' && '/mies.'}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <Button variant="outline" size="sm" onClick={() => handleEdit(listing)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDelete(listing.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Badge variant="secondary">{listing.area} m²</Badge>
+                            <Badge variant="secondary">{listing.bedrooms} pok.</Badge>
+                            <Badge variant="secondary">{listing.propertyType}</Badge>
+                            <Badge variant="outline" className="capitalize">{listing.offerType}</Badge>
+                            {listing.featured && (
+                              <Badge className="bg-accent text-accent-foreground">Polecane</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Messages Tab */}
+          <TabsContent value="messages" className="space-y-6">
+            <div>
+              <h2 className="font-serif text-2xl font-bold">Wiadomości od klientów</h2>
+              <p className="text-muted-foreground">
+                {unreadCount > 0 ? `${unreadCount} nieprzeczytanych wiadomości` : 'Wszystkie wiadomości przeczytane'}
+              </p>
+            </div>
+
+            {messagesLoading ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                <p className="text-muted-foreground mt-2">Ładowanie wiadomości...</p>
+              </div>
+            ) : messages.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <Mail className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Brak wiadomości</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {messages.map((msg) => (
+                  <Card key={msg.id} className={`transition-all ${!msg.isRead ? 'border-primary/50 bg-primary/5' : ''}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold">{msg.name}</h3>
+                            {!msg.isRead && (
+                              <Badge variant="default" className="text-xs">Nowa</Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p className="flex items-center gap-2">
+                              <Mail className="w-3 h-3" />
+                              {msg.email}
+                            </p>
+                            {msg.phone && (
+                              <p>Tel: {msg.phone}</p>
+                            )}
+                            {msg.listingTitle && (
+                              <p className="text-primary">
+                                Dotyczy: {msg.listingTitle}
+                              </p>
+                            )}
+                            {msg.subject && (
+                              <p>Temat: {msg.subject}</p>
+                            )}
+                          </div>
+                          <p className="mt-3 text-foreground bg-muted/50 p-3 rounded-lg">
+                            {msg.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(msg.createdAt).toLocaleString('pl-PL')}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(listing)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDelete(listing.id)}>
+                        <div className="flex flex-col gap-2 flex-shrink-0">
+                          {!msg.isRead && (
+                            <Button variant="outline" size="sm" onClick={() => handleMarkAsRead(msg.id)}>
+                              <Check className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteMessage(msg.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <div className="flex gap-4 mt-4 text-sm text-muted-foreground">
-                        <span>{listing.area} m²</span>
-                        <span>{listing.bedrooms} {listing.bedrooms === 1 ? 'pokój' : 'pokoje'}</span>
-                        <span>{listing.bathrooms} {listing.bathrooms === 1 ? 'łazienka' : 'łazienki'}</span>
-                        <span>{listing.propertyType}</span>
-                        <span className="capitalize">{listing.offerType}</span>
-                        {listing.featured && (
-                          <span className="bg-accent/20 text-accent px-2 py-0.5 rounded text-xs">Polecane</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

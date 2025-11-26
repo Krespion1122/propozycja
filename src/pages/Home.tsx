@@ -234,7 +234,7 @@ const HomePage = () => {
                 ))}
               </div>
               <p className="text-muted-foreground mb-6">
-                "Profesjonalna obsługa od początku do końca. Dzięki Premium Real Estate znalazłem wymarzone mieszkanie w centrum Warszawy."
+                "Profesjonalna obsługa od początku do końca. Dzięki Dom Nieruchomości znalazłem wymarzone mieszkanie w centrum Warszawy."
               </p>
               <div>
                 <p className="font-semibold">Piotr Kowalski</p>
