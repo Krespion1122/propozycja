@@ -220,18 +220,32 @@ const PropertyDetailPage = () => {
               <div>
                 <h2 className="font-serif text-2xl font-semibold mb-4">Lokalizacja</h2>
                 {property.googleMapsUrl ? (
-                  <div className="h-[400px] rounded-lg overflow-hidden">
-                    <iframe
-                      src={property.googleMapsUrl}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 0 }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Lokalizacja nieruchomości"
-                    />
-                  </div>
+                  property.googleMapsUrl.includes('/embed') || property.googleMapsUrl.includes('maps/embed') ? (
+                    <div className="h-[400px] rounded-lg overflow-hidden">
+                      <iframe
+                        src={property.googleMapsUrl}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Lokalizacja nieruchomości"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-muted h-[400px] rounded-lg flex flex-col items-center justify-center gap-4">
+                      <MapPin className="w-12 h-12 text-muted-foreground" />
+                      <p className="text-muted-foreground text-center">
+                        Zobacz lokalizację na mapie
+                      </p>
+                      <Button asChild variant="outline">
+                        <a href={property.googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                          Otwórz w Google Maps
+                        </a>
+                      </Button>
+                    </div>
+                  )
                 ) : (
                   <div className="bg-muted h-[400px] rounded-lg flex items-center justify-center">
                     <p className="text-muted-foreground">Mapa niedostępna</p>
