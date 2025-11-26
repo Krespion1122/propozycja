@@ -220,32 +220,85 @@ const PropertyDetailPage = () => {
               <div>
                 <h2 className="font-serif text-2xl font-semibold mb-4">Lokalizacja</h2>
                 {property.googleMapsUrl ? (
-                  property.googleMapsUrl.includes('/embed') || property.googleMapsUrl.includes('maps/embed') ? (
-                    <div className="h-[400px] rounded-lg overflow-hidden">
-                      <iframe
-                        src={property.googleMapsUrl}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Lokalizacja nieruchomości"
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-muted h-[400px] rounded-lg flex flex-col items-center justify-center gap-4">
-                      <MapPin className="w-12 h-12 text-muted-foreground" />
-                      <p className="text-muted-foreground text-center">
-                        Zobacz lokalizację na mapie
-                      </p>
-                      <Button asChild variant="outline">
-                        <a href={property.googleMapsUrl} target="_blank" rel="noopener noreferrer">
-                          Otwórz w Google Maps
-                        </a>
-                      </Button>
-                    </div>
-                  )
+                  (() => {
+                    const url = property.googleMapsUrl;
+                    // Check if it's already an embed URL
+                    if (url.includes('/embed') || url.includes('maps/embed')) {
+                      return (
+                        <div className="h-[400px] rounded-lg overflow-hidden">
+                          <iframe
+                            src={url}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title="Lokalizacja nieruchomości"
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Try to convert regular Google Maps URL to embed format
+                    let embedUrl = '';
+                    
+                    // Handle place URLs like: https://www.google.com/maps/place/.../@52.2296756,21.0122287,17z
+                    const placeMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (placeMatch) {
+                      const lat = placeMatch[1];
+                      const lng = placeMatch[2];
+                      embedUrl = `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d2000!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1spl!2spl!4v1`;
+                    }
+                    
+                    // Handle short URLs like: https://maps.app.goo.gl/... or goo.gl/maps
+                    // Handle query URLs like: https://www.google.com/maps?q=...
+                    const queryMatch = url.match(/[?&]q=([^&]+)/);
+                    if (!embedUrl && queryMatch) {
+                      const query = queryMatch[1];
+                      embedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${query}`;
+                    }
+                    
+                    // If we have coordinates in any form, try to extract them
+                    const coordsMatch = url.match(/(-?\d+\.?\d+)[,\s]+(-?\d+\.?\d+)/);
+                    if (!embedUrl && coordsMatch) {
+                      const lat = coordsMatch[1];
+                      const lng = coordsMatch[2];
+                      embedUrl = `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d2000!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1spl!2spl!4v1`;
+                    }
+                    
+                    if (embedUrl) {
+                      return (
+                        <div className="h-[400px] rounded-lg overflow-hidden">
+                          <iframe
+                            src={embedUrl}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            title="Lokalizacja nieruchomości"
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback - show button to open in Google Maps
+                    return (
+                      <div className="bg-muted h-[400px] rounded-lg flex flex-col items-center justify-center gap-4">
+                        <MapPin className="w-12 h-12 text-muted-foreground" />
+                        <p className="text-muted-foreground text-center">
+                          Zobacz lokalizację na mapie
+                        </p>
+                        <Button asChild variant="outline">
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            Otwórz w Google Maps
+                          </a>
+                        </Button>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="bg-muted h-[400px] rounded-lg flex items-center justify-center">
                     <p className="text-muted-foreground">Mapa niedostępna</p>
