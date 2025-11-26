@@ -10,14 +10,47 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ImageLightbox from "@/components/ImageLightbox";
 import { useListings } from "@/hooks/useListings";
+import { useMessages } from "@/hooks/useMessages";
+import { toast } from "@/hooks/use-toast";
 
 const PropertyDetailPage = () => {
   const { id } = useParams();
   const { listings, loading } = useListings();
+  const { sendMessage } = useMessages();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+  });
+  const [sending, setSending] = useState(false);
 
   const listing = listings.find(l => l.id === id);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!listing) return;
+    
+    setSending(true);
+    const result = await sendMessage({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      message: formData.message,
+      listingId: listing.id,
+      listingTitle: listing.title,
+    });
+
+    if (result.error) {
+      toast({ title: "Błąd", description: "Nie udało się wysłać wiadomości.", variant: "destructive" });
+    } else {
+      toast({ title: "Wysłano", description: "Twoja wiadomość została wysłana. Skontaktujemy się wkrótce." });
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    }
+    setSending(false);
+  };
 
   if (loading) {
     return (
@@ -61,6 +94,7 @@ const PropertyDetailPage = () => {
     description: listing.description,
     features: listing.features,
     createdAt: listing.createdAt,
+    googleMapsUrl: listing.googleMapsUrl,
   };
 
   const daysSinceCreated = Math.floor((Date.now() - new Date(property.createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -185,9 +219,24 @@ const PropertyDetailPage = () => {
               {/* Location */}
               <div>
                 <h2 className="font-serif text-2xl font-semibold mb-4">Lokalizacja</h2>
-                <div className="bg-muted h-[400px] rounded-lg flex items-center justify-center">
-                  <p className="text-muted-foreground">Tutaj będzie mapa Google Maps</p>
-                </div>
+                {property.googleMapsUrl ? (
+                  <div className="h-[400px] rounded-lg overflow-hidden">
+                    <iframe
+                      src={property.googleMapsUrl}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Lokalizacja nieruchomości"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-muted h-[400px] rounded-lg flex items-center justify-center">
+                    <p className="text-muted-foreground">Mapa niedostępna</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -206,13 +255,17 @@ const PropertyDetailPage = () => {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" size="lg">
-                        <Phone className="w-4 h-4 mr-2" />
-                        Zadzwoń
+                      <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" size="lg" asChild>
+                        <a href="tel:+48123456789">
+                          <Phone className="w-4 h-4 mr-2" />
+                          Zadzwoń
+                        </a>
                       </Button>
-                      <Button variant="outline" className="w-full" size="lg">
-                        <Mail className="w-4 h-4 mr-2" />
-                        Wyślij wiadomość
+                      <Button variant="outline" className="w-full" size="lg" asChild>
+                        <a href="mailto:kontakt@domnieruchomosci.pl">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Wyślij email
+                        </a>
                       </Button>
                     </div>
                   </CardContent>
@@ -222,28 +275,51 @@ const PropertyDetailPage = () => {
                 <Card>
                   <CardContent className="p-6">
                     <h3 className="font-serif text-xl font-semibold mb-4">Zapytaj o ofertę</h3>
-                    <form className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <Label htmlFor="name">Imię i nazwisko</Label>
-                        <Input id="name" placeholder="Jan Kowalski" />
+                        <Label htmlFor="name">Imię i nazwisko *</Label>
+                        <Input 
+                          id="name" 
+                          placeholder="Jan Kowalski" 
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          required
+                        />
                       </div>
                       <div>
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" placeholder="jan@example.com" />
+                        <Label htmlFor="email">Email *</Label>
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          placeholder="jan@example.com" 
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          required
+                        />
                       </div>
                       <div>
                         <Label htmlFor="phone">Telefon</Label>
-                        <Input id="phone" type="tel" placeholder="+48 123 456 789" />
+                        <Input 
+                          id="phone" 
+                          type="tel" 
+                          placeholder="+48 123 456 789" 
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        />
                       </div>
                       <div>
-                        <Label htmlFor="message">Wiadomość</Label>
+                        <Label htmlFor="message">Wiadomość *</Label>
                         <Textarea
                           id="message"
                           placeholder="Jestem zainteresowany/a tą nieruchomością..."
                           rows={4}
+                          value={formData.message}
+                          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                          required
                         />
                       </div>
-                      <Button className="w-full bg-primary hover:bg-primary/90">
+                      <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={sending}>
+                        {sending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         Wyślij zapytanie
                       </Button>
                     </form>
@@ -263,13 +339,13 @@ const PropertyDetailPage = () => {
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <Mail className="w-4 h-4" />
-                        <a href="mailto:kontakt@premium.pl" className="hover:text-primary">
-                          kontakt@premium.pl
+                        <a href="mailto:kontakt@domnieruchomosci.pl" className="hover:text-primary">
+                          kontakt@domnieruchomosci.pl
                         </a>
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground mt-4">
-                      Nasz zespół odpowiada na zapytania w ciągu 24 godzin
+                      Odpowiadamy na zapytania w ciągu 24 godzin
                     </p>
                   </CardContent>
                 </Card>

@@ -24,6 +24,7 @@ export type Database = {
           featured: boolean | null
           features: string[] | null
           floor: string | null
+          google_maps_url: string | null
           id: string
           images: string[] | null
           location: string
@@ -44,6 +45,7 @@ export type Database = {
           featured?: boolean | null
           features?: string[] | null
           floor?: string | null
+          google_maps_url?: string | null
           id?: string
           images?: string[] | null
           location: string
@@ -64,6 +66,7 @@ export type Database = {
           featured?: boolean | null
           features?: string[] | null
           floor?: string | null
+          google_maps_url?: string | null
           id?: string
           images?: string[] | null
           location?: string
@@ -76,6 +79,53 @@ export type Database = {
           year?: number | null
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_read: boolean | null
+          listing_id: string | null
+          listing_title: string | null
+          message: string
+          name: string
+          phone: string | null
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_read?: boolean | null
+          listing_id?: string | null
+          listing_title?: string | null
+          message: string
+          name: string
+          phone?: string | null
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_read?: boolean | null
+          listing_id?: string | null
+          listing_title?: string | null
+          message?: string
+          name?: string
+          phone?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

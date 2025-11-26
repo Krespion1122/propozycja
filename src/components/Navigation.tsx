@@ -13,10 +13,10 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-navy-light rounded flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-xl">PR</span>
+              <span className="text-primary-foreground font-serif font-bold text-xl">DN</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-serif font-bold text-xl leading-none">Premium Real Estate</span>
+              <span className="font-serif font-bold text-xl leading-none">Dom Nieruchomości</span>
               <span className="text-xs text-muted-foreground">Twoje wymarzone nieruchomości</span>
             </div>
           </Link>
