@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, Mail, Eye, Check, MapPin, Home, MessageSquare, Building } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Edit, Trash2, GripVertical, Save, X, LogIn, LogOut, Loader2, Mail, Eye, Check, MapPin, Home, MessageSquare, Building, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -237,6 +238,12 @@ const AdminPage = () => {
                 <LogIn className="w-4 h-4 mr-2" />
                 Zaloguj
               </Button>
+              <Button variant="ghost" className="w-full" asChild>
+                <Link to="/">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Powrót do strony głównej
+                </Link>
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -259,10 +266,18 @@ const AdminPage = () => {
                 <p className="text-xs text-muted-foreground">Dom Nieruchomości</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Wyloguj
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Strona główna
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Wyloguj
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -423,14 +438,15 @@ const AdminPage = () => {
                     </div>
 
                     <div>
-                      <Label>Link do Google Maps (pinezka)</Label>
+                      <Label>Link do Google Maps</Label>
                       <Input
                         value={formData.googleMapsUrl}
                         onChange={(e) => setFormData({ ...formData, googleMapsUrl: e.target.value })}
-                        placeholder="https://www.google.com/maps/embed?pb=..."
+                        placeholder="https://www.google.com/maps/embed?pb=... lub zwykły link Google Maps"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Wklej link embed z Google Maps (udostępnij → umieść na stronie → kopiuj link src)
+                        Dla osadzenia mapy: Google Maps → Udostępnij → Umieść mapę → kopiuj adres src z kodu iframe.<br />
+                        Możesz też wkleić zwykły link do Google Maps - wyświetli się przycisk "Otwórz w Google Maps".
                       </p>
                     </div>
 
