@@ -462,12 +462,16 @@ const AdminPage = () => {
                     </div>
 
                     <div>
-                      <Label>Udogodnienia (oddzielone przecinkami)</Label>
-                      <Input
-                        value={formData.features?.join(', ')}
-                        onChange={(e) => setFormData({ ...formData, features: e.target.value.split(',').map(f => f.trim()).filter(Boolean) })}
-                        placeholder="Klimatyzacja, Balkon, Garaż, Winda"
+                      <Label>Udogodnienia (każde w nowej linii)</Label>
+                      <Textarea
+                        value={formData.features?.join('\n') || ''}
+                        onChange={(e) => setFormData({ ...formData, features: e.target.value.split('\n').map(f => f.trim()).filter(Boolean) })}
+                        placeholder="Klimatyzacja&#10;Balkon&#10;Garaż&#10;Winda"
+                        rows={4}
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Wpisz każde udogodnienie w osobnej linii (Enter = nowa linia)
+                      </p>
                     </div>
 
                     <div>
